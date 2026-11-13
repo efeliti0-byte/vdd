@@ -2,7 +2,10 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-const DEFAULT_PORT = parseInt(process.env.PORT, 10) || 3000;
+// DigitalOcean App Platform asigna PORT por variable de entorno (por defecto 8080)
+const PORT = parseInt(process.env.PORT, 10) || 8080;
+// En contenedores cloud (DigitalOcean, Docker, etc.) es obligatorio escuchar en 0.0.0.0
+const HOST = '0.0.0.0';
 const PUBLIC_DIR = __dirname;
 
 const MIME_TYPES = {
@@ -26,6 +29,12 @@ function handleRequest(req, res) {
   try {
     const reqUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
     let pathname = decodeURIComponent(reqUrl.pathname);
+
+    // Endpoints de comprobación de estado (Health Checks) para DigitalOcean
+    if (pathname === '/health' || pathname === '/healthz' || pathname === '/ping') {
+      res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+      return res.end('OK');
+    }
 
     if (pathname === '/') {
       pathname = '/index.html';
@@ -52,6 +61,12 @@ function handleRequest(req, res) {
       const ext = path.extname(filePath).toLowerCase();
       const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 
+      // DigitalOcean a menudo utiliza HEAD para el health check
+      if (req.method === 'HEAD') {
+        res.writeHead(200, { 'Content-Type': contentType });
+        return res.end();
+      }
+
       fs.readFile(filePath, (readErr, content) => {
         if (readErr) {
           res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
@@ -68,25 +83,27 @@ function handleRequest(req, res) {
   }
 }
 
-function startServer(port) {
-  const server = http.createServer(handleRequest);
+const server = http.createServer(handleRequest);
 
-  server.listen(port, () => {
-    console.log(`\n=========================================`);
-    console.log(` Servidor Node.js activo`);
-    console.log(` URL: http://localhost:${port}`);
-    console.log(` Presiona Ctrl+C para detener`);
-    console.log(`=========================================\n`);
-  });
+server.listen(PORT, HOST, () => {
+  console.log(`\n=========================================`);
+  console.log(` Servidor Node.js activo`);
+  console.log(` Escuchando en http://${HOST}:${PORT}`);
+  console.log(`=========================================\n`);
+});
 
-  server.on('error', (err) => {
-    if ((err.code === 'EADDRINUSE' || err.code === 'EACCES') && port < 3010) {
-      console.warn(`Puerto ${port} no disponible (${err.code}). Probando puerto ${port + 1}...`);
-      startServer(port + 1);
-    } else {
-      console.error('Error al iniciar el servidor:', err.message);
-    }
-  });
-}
+server.on('error', (err) => {
+  console.error('Error al iniciar el servidor:', err);
+  process.exit(1);
+});
 
-startServer(DEFAULT_PORT);
+// Manejo de señales para apagado limpio en contenedores cloud
+process.on('SIGTERM', () => {
+  console.log('Recibido SIGTERM, cerrando servidor...');
+  server.close(() => process.exit(0));
+});
+
+process.on('SIGINT', () => {
+  console.log('Recibido SIGINT, cerrando servidor...');
+  server.close(() => process.exit(0));
+});
