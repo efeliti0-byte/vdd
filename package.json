@@ -1,0 +1,12 @@
+{
+  "name": "vdd",
+  "version": "1.0.0",
+  "description": "Proyecto vdd con servidor nativo Node.js",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
