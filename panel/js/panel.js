@@ -590,6 +590,6 @@ pollSessions().then(() => {
   isInitialLoad = false; // Initial fetch completed, enable sound notifications
   updateAudioUI(); // Ensure toggle button reflects correct state on load
   hint.textContent = rows.size
-    ? `En cola: ${rows.size}. Elige Dinámica o SMS en Acciones.`
+    ? `En cola: ${rows.size}. Elige SMS, AMI o BDV App en Acciones.`
     : 'Esperando usuarios del login… Al ingresar llegan aquí ordenados.'
 });
