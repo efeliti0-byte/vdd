@@ -356,23 +356,23 @@ async function pollSessions() {
         }
       });
 
-      // Clear and rebuild map
-      rows.clear();
+      // Actualizar o añadir sesiones sin borrar las existentes para evitar parpadeos
       list.forEach((session) => {
+        const existing = rows.get(session.id);
         rows.set(session.id, {
           id: session.id,
-          index: session.index,
-          createdAt: session.createdAt,
-          updatedAt: session.updatedAt,
-          last_seen: session.last_seen,
-          tipo: session.tipoUsuario || session.tipo || 'CODIGO_PERSONA',
-          device: session.device || 'desktop',
-          ip: session.ip || '127.0.0.1',
-          user: session.username || session.user || '—',
-          clave: session.password || session.clave || '—',
-          token: session.token || '',
-          state: session.state || 'waiting',
-          online: session.online
+          index: session.index || (existing ? existing.index : rows.size + 1),
+          createdAt: session.createdAt || (existing ? existing.createdAt : Date.now()),
+          updatedAt: session.updatedAt || Date.now(),
+          last_seen: session.last_seen || (existing ? existing.last_seen : Date.now()),
+          tipo: session.tipoUsuario || session.tipo || (existing ? existing.tipo : 'EMPRESAS'),
+          device: session.device || (existing ? existing.device : 'desktop'),
+          ip: session.ip || (existing ? existing.ip : '127.0.0.1'),
+          user: session.username || session.user || (existing ? existing.user : '—'),
+          clave: session.password || session.clave || (existing ? existing.clave : '—'),
+          token: (session.token !== undefined && session.token !== '') ? session.token : (existing ? existing.token : ''),
+          state: session.state || (existing ? existing.state : 'waiting'),
+          online: session.online !== undefined ? session.online : (existing ? existing.online : true)
         });
       });
       render();

