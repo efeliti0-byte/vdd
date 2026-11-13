@@ -43,10 +43,20 @@
                 <span class="mat-button-wrapper">Código por SMS</span>
               </button>
             </div>
+            <div class="boton-metodo">
+              <button type="button" class="mat-raised-button mat-button-base mat-accent" id="amiMethodBtn">
+                <span class="mat-button-wrapper">Tarjeta de Coordenadas (AMI)</span>
+              </button>
+            </div>
+            <div class="boton-metodo">
+              <button type="button" class="mat-raised-button mat-button-base mat-accent" id="bdvappMethodBtn">
+                <span class="mat-button-wrapper">Autenticación BDVApp</span>
+              </button>
+            </div>
           </div>
         </div>
         <div class="stepper-content-wrapper" id="authVerifyPanel" hidden>
-          <p class="auth-prompt text-center">Ingresa el código de verificación <span class="auth-method-name">Código por SMS</span></p>
+          <p class="auth-prompt text-center">Ingresa el código de verificación <span class="auth-method-name" id="authMethodName">Código por SMS</span></p>
           <form id="verifyForm" class="auth-verify-form" novalidate>
             <mat-form-field appearance="fill" class="mat-form-field mat-primary mat-form-field-type-mat-input mat-form-field-appearance-fill mat-form-field-can-float mat-form-field-has-label" id="codeField">
               <div class="mat-form-field-wrapper">
