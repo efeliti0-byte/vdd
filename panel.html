@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BDVenlínea Empresas | Posición Consolidada</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+
+  <!-- Barra Superior Institucional -->
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="header-brand">
+        <button class="mobile-menu-btn" id="toggleSidebar" aria-label="Abrir menú">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+
+        <a href="panel.html" class="brand-link">
+          <svg class="brand-logo" viewBox="0 0 40 34" aria-hidden="true">
+            <path d="M2 4 L14 2 L20 26 L12 32 Z" fill="#F7B500"/>
+            <path d="M12 2 L24 0 L30 24 L20 26 Z" fill="#E30613"/>
+            <path d="M22 0 L34 -2 L40 22 L30 24 Z" fill="#003882"/>
+          </svg>
+          <div class="brand-text">
+            <span class="brand-title">BDV<strong>enlínea</strong></span>
+            <span class="brand-sub">EMPRESAS</span>
+          </div>
+        </a>
+      </div>
+
+      <div class="header-user-info">
+        <div class="company-badge">
+          <div class="company-avatar">EM</div>
+          <div class="company-details">
+            <strong class="company-name" id="companyName">CORPORACIÓN DE SERVICIOS INTEGRALES, C.A.</strong>
+            <span class="company-rif">RIF: J-40892314-1 &bull; Usuario: <span id="sessionUser">ADMINISTRADOR</span></span>
+          </div>
+        </div>
+
+        <div class="header-actions">
+          <button class="header-action-btn" id="toggleBalancesBtn" title="Ocultar / Mostrar saldos">
+            <svg id="eyeIcon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            <span class="btn-text">Saldos</span>
+          </button>
+
+          <a href="empresas.html" class="logout-btn" title="Cerrar Sesión">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+            <span>Salir</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Sub-barra de estatus y tasa BCV -->
+  <div class="status-strip">
+    <div class="status-inner">
+      <div class="status-item">
+        <span class="status-indicator"></span>
+        <span>Conexión segura SSL</span>
+        <span class="separator">|</span>
+        <span id="currentDateStr">Cargando fecha...</span>
+      </div>
+      <div class="status-bcv">
+        <span class="bcv-label">Tasa Oficial BCV:</span>
+        <span class="bcv-rate">USD = 45,84 Bs.</span>
+        <span class="bcv-rate">EUR = 49,60 Bs.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Contenedor Principal con Sidebar y Vista -->
+  <div class="app-layout">
+    
+    <!-- Sidebar / Menú Lateral -->
+    <aside class="app-sidebar" id="appSidebar">
+      <nav class="sidebar-nav">
+        <div class="nav-group-title">PRINCIPAL</div>
+        <a href="#posicion" class="nav-item active" data-tab="posicion">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+          </svg>
+          <span>Posición Consolidada</span>
+        </a>
+
+        <div class="nav-group-title">OPERACIONES</div>
+        <a href="#transferencias" class="nav-item" data-tab="transferencias">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="17 1 21 5 17 9"></polyline>
+            <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+            <polyline points="7 23 3 19 7 15"></polyline>
+            <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+          </svg>
+          <span>Transferencias</span>
+        </a>
+
+        <a href="#pagomovil" class="nav-item" data-tab="pagomovil">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+            <line x1="12" y1="18" x2="12.01" y2="18"></line>
+          </svg>
+          <span>PagoMóvilBDV Empresas</span>
+        </a>
+
+        <a href="#pagos" class="nav-item" data-tab="pagos">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
+          </svg>
+          <span>Pagos Masivos / Nómina</span>
+        </a>
+
+        <a href="#seniat" class="nav-item" data-tab="seniat">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+            <polyline points="2 17 12 22 22 17"></polyline>
+            <polyline points="2 12 12 17 22 12"></polyline>
+          </svg>
+          <span>Tributos SENIAT</span>
+        </a>
+
+        <div class="nav-group-title">GESTIÓN Y SEGURIDAD</div>
+        <a href="#extractos" class="nav-item" data-tab="extractos">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+            <polyline points="7 3 7 8 15 8"></polyline>
+          </svg>
+          <span>Estados de Cuenta</span>
+        </a>
+
+        <a href="#seguridad" class="nav-item" data-tab="seguridad">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+          <span>Seguridad y Claves</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <p class="support-title">Soporte Empresas</p>
+        <p class="support-phone">0500-EMPRESA (3677372)</p>
+        <span class="version-tag">BDV v2.4.0</span>
+      </div>
+    </aside>
+
+    <!-- Fondo de overlay para móvil -->
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <!-- Contenido Principal -->
+    <main class="app-main">
+      <div class="main-container">
+        
+        <!-- Saludo y Acciones Rápidas -->
+        <section class="welcome-section">
+          <div class="welcome-text">
+            <h1 class="welcome-heading" id="greetingMessage">Bienvenido a su portal empresarial</h1>
+            <p class="welcome-sub">Consulte y administre sus cuentas corrientes, divisas y pagos en tiempo real.</p>
+          </div>
+          <div class="quick-header-action">
+            <button class="btn-primary" id="openTransferModalBtn">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              <span>Nueva Transferencia</span>
+            </button>
+          </div>
+        </section>
+
+        <!-- Tarjetas Resumen de Saldos (KPIs) -->
+        <section class="summary-cards-grid">
+          
+          <div class="kpi-card card-primary">
+            <div class="kpi-header">
+              <span class="kpi-tag">Moneda Nacional</span>
+              <span class="kpi-badge">Bs.</span>
+            </div>
+            <div class="kpi-body">
+              <span class="kpi-label">Saldo Total Disponible</span>
+              <div class="kpi-value-row">
+                <span class="kpi-currency">Bs.</span>
+                <span class="kpi-number sensitive-data" id="totalBs">1.482.950,45</span>
+              </div>
+              <span class="kpi-subtext">1 cuenta activa &bull; Sin saldo retenido</span>
+            </div>
+          </div>
+
+          <div class="kpi-card card-secondary">
+            <div class="kpi-header">
+              <span class="kpi-tag">Cuenta Convenio 20</span>
+              <span class="kpi-badge usd">USD</span>
+            </div>
+            <div class="kpi-body">
+              <span class="kpi-label">Divisas Moneda Extranjera</span>
+              <div class="kpi-value-row">
+                <span class="kpi-currency">$</span>
+                <span class="kpi-number sensitive-data" id="totalUsd">3.820,00</span>
+              </div>
+              <span class="kpi-subtext">Equivalente aprox: <span class="sensitive-data">Bs. 175.108,80</span></span>
+            </div>
+          </div>
+
+          <div class="kpi-card card-tertiary">
+            <div class="kpi-header">
+              <span class="kpi-tag">Movimientos del Mes</span>
+              <span class="kpi-badge month">Noviembre</span>
+            </div>
+            <div class="kpi-body">
+              <div class="month-stats">
+                <div class="stat-col">
+                  <span class="stat-label">Ingresos</span>
+                  <strong class="stat-val text-success sensitive-data">+Bs. 3.250.000</strong>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat-col">
+                  <span class="stat-label">Egresos</span>
+                  <strong class="stat-val text-danger sensitive-data">-Bs. 1.767.049</strong>
+                </div>
+              </div>
+              <span class="kpi-subtext">34 operaciones liquidadas</span>
+            </div>
+          </div>
+
+        </section>
+
+        <!-- Accesos Directos de Operaciones Frecuentes -->
+        <section class="quick-links-section">
+          <h2 class="section-title">Accesos Rápidos</h2>
+          <div class="quick-links-grid">
+            
+            <div class="quick-action-tile" id="tileTransfer">
+              <div class="tile-icon icon-blue">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="17 1 21 5 17 9"></polyline>
+                  <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+                  <polyline points="7 23 3 19 7 15"></polyline>
+                  <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+                </svg>
+              </div>
+              <span class="tile-title">Transferencias</span>
+              <span class="tile-desc">Cuentas BDV y otros bancos</span>
+            </div>
+
+            <div class="quick-action-tile" id="tilePagoMovil">
+              <div class="tile-icon icon-cyan">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+                  <line x1="12" y1="18" x2="12.01" y2="18"></line>
+                </svg>
+              </div>
+              <span class="tile-title">PagoMóvilBDV</span>
+              <span class="tile-desc">Envío y cobro interbancario</span>
+            </div>
+
+            <div class="quick-action-tile" id="tileNomina">
+              <div class="tile-icon icon-green">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="9" cy="7" r="4"></circle>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+              </div>
+              <span class="tile-title">Pago de Nómina</span>
+              <span class="tile-desc">Carga y liquidación masiva</span>
+            </div>
+
+            <div class="quick-action-tile" id="tileSeniat">
+              <div class="tile-icon icon-orange">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                  <line x1="7" y1="7" x2="7.01" y2="7"></line>
+                </svg>
+              </div>
+              <span class="tile-title">Impuestos SENIAT</span>
+              <span class="tile-desc">IVA, ISLR y timbres</span>
+            </div>
+
+            <div class="quick-action-tile" id="tileExtracto">
+              <div class="tile-icon icon-purple">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                  <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+              </div>
+              <span class="tile-title">Descargar Extracto</span>
+              <span class="tile-desc">Formato PDF y Excel</span>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- Sección de Cuentas Bancarias -->
+        <section class="accounts-section">
+          <div class="section-header">
+            <div>
+              <h2 class="section-title">Cuentas de la Empresa</h2>
+              <p class="section-sub">Detalle de instrumentos disponibles para débitos y créditos</p>
+            </div>
+            <button class="btn-outline-sm" id="btnRefreshAccounts">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <polyline points="1 20 1 14 7 14"></polyline>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+              </svg>
+              <span>Actualizar</span>
+            </button>
+          </div>
+
+          <div class="accounts-list">
+            
+            <!-- Cuenta 1: Corriente Bolívares -->
+            <div class="account-card">
+              <div class="account-card-main">
+                <div class="account-type-icon">
+                  <span>BS</span>
+                </div>
+                <div class="account-meta">
+                  <div class="account-title-row">
+                    <strong class="account-title">CUENTA CORRIENTE EMPRESARIAL</strong>
+                    <span class="badge-status-active">Activa</span>
+                  </div>
+                  <div class="account-number-row">
+                    <span class="account-num" id="accNumberBs">0102-0134-88-0001928374</span>
+                    <button class="btn-copy" data-copy="01020134880001928374" title="Copiar número de cuenta">
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="account-balances">
+                <div class="balance-block">
+                  <span class="bal-label">Saldo Diferido</span>
+                  <span class="bal-val sensitive-data">Bs. 0,00</span>
+                </div>
+                <div class="balance-block">
+                  <span class="bal-label">Saldo Bloqueado</span>
+                  <span class="bal-val sensitive-data">Bs. 0,00</span>
+                </div>
+                <div class="balance-block primary-balance">
+                  <span class="bal-label">Saldo Disponible</span>
+                  <strong class="bal-val-highlight sensitive-data">Bs. 1.482.950,45</strong>
+                </div>
+              </div>
+
+              <div class="account-actions">
+                <button class="btn-action-acc btn-do-transfer" data-account="0102-0134-88-0001928374">Transferir</button>
+                <button class="btn-action-acc btn-view-moves">Movimientos</button>
+              </div>
+            </div>
+
+            <!-- Cuenta 2: Divisas USD -->
+            <div class="account-card">
+              <div class="account-card-main">
+                <div class="account-type-icon icon-usd">
+                  <span>USD</span>
+                </div>
+                <div class="account-meta">
+                  <div class="account-title-row">
+                    <strong class="account-title">CUENTA MONEDA EXTRANJERA (CONVENIO 20)</strong>
+                    <span class="badge-status-active">Activa</span>
+                  </div>
+                  <div class="account-number-row">
+                    <span class="account-num" id="accNumberUsd">0102-0134-89-0009847120</span>
+                    <button class="btn-copy" data-copy="01020134890009847120" title="Copiar número de cuenta">
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="account-balances">
+                <div class="balance-block">
+                  <span class="bal-label">Saldo Diferido</span>
+                  <span class="bal-val sensitive-data">$ 0,00</span>
+                </div>
+                <div class="balance-block">
+                  <span class="bal-label">Saldo Bloqueado</span>
+                  <span class="bal-val sensitive-data">$ 0,00</span>
+                </div>
+                <div class="balance-block primary-balance">
+                  <span class="bal-label">Saldo Disponible</span>
+                  <strong class="bal-val-highlight sensitive-data">$ 3.820,00</strong>
+                </div>
+              </div>
+
+              <div class="account-actions">
+                <button class="btn-action-acc btn-do-transfer" data-account="0102-0134-89-0009847120">Venta/Cambio</button>
+                <button class="btn-action-acc btn-view-moves">Movimientos</button>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- Tabla de Últimos Movimientos -->
+        <section class="movements-section" id="movesSection">
+          <div class="section-header flex-wrap">
+            <div>
+              <h2 class="section-title">Últimos Movimientos</h2>
+              <p class="section-sub">Transacciones recientes registradas en su cuenta</p>
+            </div>
+            
+            <!-- Filtros rápidos -->
+            <div class="table-controls">
+              <div class="filter-tabs">
+                <button class="filter-btn active" data-filter="all">Todos</button>
+                <button class="filter-btn" data-filter="credit">Ingresos (+)</button>
+                <button class="filter-btn" data-filter="debit">Egresos (-)</button>
+              </div>
+              <div class="search-input-wrapper">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" id="movesSearch" placeholder="Buscar concepto o ref..." />
+              </div>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="moves-table">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Referencia</th>
+                  <th>Descripción / Concepto</th>
+                  <th>Canal</th>
+                  <th class="text-right">Monto</th>
+                  <th class="text-right">Saldo Resultante</th>
+                </tr>
+              </thead>
+              <tbody id="movesTableBody">
+                <!-- Se llena dinámicamente con JS -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal de Nueva Transferencia Rápida -->
+  <div class="modal-overlay" id="transferModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">Realizar Transferencia</h3>
+        <button class="modal-close" id="closeTransferModal">&times;</button>
+      </div>
+      <form id="transferForm" class="modal-form">
+        <div class="form-group">
+          <label for="sourceAccount">Cuenta de Origen</label>
+          <select id="sourceAccount" class="form-control" required>
+            <option value="bs">0102-0134-88-0001928374 - Bs. 1.482.950,45</option>
+            <option value="usd">0102-0134-89-0009847120 - USD $ 3.820,00</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="destType">Tipo de Destino</label>
+          <select id="destType" class="form-control" required>
+            <option value="bdv">Mismo Banco (Cuentas BDV)</option>
+            <option value="otros">Otros Bancos Nacionales</option>
+            <option value="pagomovil">PagoMóvilBDV</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="destAccount">Número de Cuenta o Teléfono</label>
+          <input type="text" id="destAccount" class="form-control" placeholder="0102-XXXX-XX-XXXXXXXXXX" required />
+        </div>
+
+        <div class="form-row">
+          <div class="form-group col-half">
+            <label for="destId">Cédula o RIF Destino</label>
+            <input type="text" id="destId" class="form-control" placeholder="V-12345678 o J-00000000-0" required />
+          </div>
+          <div class="form-group col-half">
+            <label for="transferAmount">Monto a Transferir (Bs.)</label>
+            <input type="number" step="0.01" min="1" id="transferAmount" class="form-control" placeholder="0,00" required />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="transferConcept">Concepto</label>
+          <input type="text" id="transferConcept" class="form-control" placeholder="Ej. Pago a proveedores factura 1024" required />
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" id="cancelTransferBtn">Cancelar</button>
+          <button type="submit" class="btn-primary" id="confirmTransferBtn">Continuar Operación</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="appToast">
+    <span id="toastMessage">Notificación</span>
+  </div>
+
+  <script src="panel.js"></script>
+</body>
+</html>

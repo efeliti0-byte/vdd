@@ -209,7 +209,10 @@
       e.preventDefault();
       if (!verifyCode || verifyCode.value.length === 0) return;
       showSpinner();
-      setTimeout(hideSpinner, 1500);
+      setTimeout(() => {
+        hideSpinner();
+        window.location.href = 'panel.html';
+      }, 1200);
     });
   }
 
