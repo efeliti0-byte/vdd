@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>html,body{margin:0;height:100%}</style></head>
+<body>
+<iframe id="f" src="empresas.html?v10" style="border:0;width:100%;height:100%"></iframe>
+<script>
+setTimeout(async()=>{
+  const d=document.getElementById('f').contentDocument;
+  const u=d.querySelector('input[name=username],input[formcontrolname=username]');
+  if(u){u.value='raul333';u.dispatchEvent(new Event('input',{bubbles:true}));}
+  const b=d.querySelector('.button-login-container button');
+  if(b){b.disabled=false;b.click();}
+  setTimeout(()=>{
+    const p=d.getElementById('password');
+    if(p){p.focus(); p.blur();} // trigger error
+  }, 400);
+}, 800);
+</script>
+</body></html>

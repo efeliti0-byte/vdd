@@ -1,0 +1,245 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: #545454;
+}
+
+/* Fondo a pantalla completa (igual al original) */
+.login-container {
+  overflow: hidden;
+  background-color: #ededed;
+  background-image: url("assets/login-empresa.png");
+  background-position: center center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  height: 100vh;
+}
+
+/* Tarjeta flotante a la izquierda */
+.login-container-float-center {
+  position: fixed;
+  top: 50%;
+  left: 25%;
+  width: 25%;
+  height: auto;
+  transform: translate(-50%, -50%);
+  background-color: #fff;
+  box-shadow: 0 5px 10px 0 rgba(0, 0, 0, .1);
+  border-radius: 5px;
+}
+
+.login-container-logo {
+  display: block;
+  margin: 30px auto 0;
+}
+.logo-login {
+  display: block;
+  margin: 0 auto;
+  height: 60px;
+}
+
+.login-container-form {
+  background-color: #fff;
+  padding: 30px 22px;
+  border-bottom-left-radius: 10px;
+  border-bottom-right-radius: 10px;
+}
+
+/* Campo estilo Material "fill" */
+.mat-field {
+  position: relative;
+  width: 100%;
+  background: #f5f5f5;
+  border-radius: 4px 4px 0 0;
+  padding: 20px 12px 6px;
+}
+.mat-field input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 16px;
+  color: #212121;
+  padding: 2px 0;
+}
+.mat-field label {
+  position: absolute;
+  left: 12px;
+  top: 18px;
+  color: #707070;
+  font-size: 16px;
+  pointer-events: none;
+  transition: transform .2s ease, color .2s ease, font-size .2s ease;
+  transform-origin: left top;
+}
+.mat-field .req { color: inherit; }
+.mat-field input:focus + label,
+.mat-field input:not(:placeholder-shown) + label {
+  transform: translateY(-14px);
+  font-size: 11px;
+}
+.mat-field.focused label { color: #cd352a; }
+
+.mat-underline {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 1px;
+  background: rgba(0, 0, 0, .42);
+}
+.mat-underline::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 2px;
+  background: #cd352a;
+  transform: scaleX(0);
+  transition: transform .2s ease;
+}
+.mat-field.focused .mat-underline::after { transform: scaleX(1); }
+
+/* Botón Entrar */
+.button-login-container {
+  margin-top: 20px;
+  text-align: center;
+}
+.button-login-container button {
+  width: 50%;
+  height: 45px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  text-transform: none;
+  cursor: pointer;
+  transition: background-color .2s, box-shadow .2s;
+}
+.button-login-container button:disabled {
+  background-color: rgba(0, 0, 0, .12);
+  color: rgba(0, 0, 0, .26);
+  cursor: default;
+}
+.button-login-container button:not(:disabled) {
+  background-color: #1976d2;
+  color: #fff;
+  box-shadow: 0 3px 1px -2px rgba(0,0,0,.2), 0 2px 2px 0 rgba(0,0,0,.14), 0 1px 5px 0 rgba(0,0,0,.12);
+}
+.button-login-container button:not(:disabled):hover {
+  background-color: #1565c0;
+}
+
+/* Enlaces */
+.autogestion-usuario-unico {
+  margin-top: 20px;
+  text-align: center;
+}
+.autogestion-user {
+  font-size: 13px;
+  color: #707070;
+  text-decoration: none;
+  font-weight: 700;
+  line-height: 2;
+  display: inline-block;
+  white-space: nowrap;
+}
+.autogestion-user:hover { color: #cd352a; }
+
+/* Modal de contraseña */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal-overlay[hidden] { display: none; }
+
+.modal-box {
+  background: #fff;
+  width: 92%;
+  max-width: 268px;
+  border-radius: 4px;
+  box-shadow: 0 11px 15px -7px rgba(0,0,0,.2), 0 24px 38px 3px rgba(0,0,0,.14), 0 9px 46px 8px rgba(0,0,0,.12);
+  padding: 30px 20px 18px;
+}
+.modal-title {
+  color: #3f5f8a;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+  line-height: 1.45;
+  margin: 0 auto 14px;
+  max-width: 210px;
+}
+.modal-field { margin-top: 6px; }
+.modal-field.mat-field { padding: 22px 12px 8px; }
+.modal-field input { font-size: 14px; }
+.modal-field label { font-size: 13px; top: 20px; }
+
+/* Mensaje de error estilo Material */
+.mat-error {
+  display: none;
+  text-align: right;
+  font-size: 11px;
+  color: #cd352a;
+  margin-top: 4px;
+  padding-right: 2px;
+}
+.mat-field.error { background: #fdecea; }
+.mat-field.error .mat-error { display: block; }
+.mat-field.error .mat-underline { background: #cd352a; }
+.mat-field.error .mat-underline::after { transform: scaleX(1); background: #cd352a; }
+.mat-field.error label { color: #cd352a; }
+
+.modal-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 20px;
+}
+.modal-actions button {
+  min-width: 88px;
+  height: 36px;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color .2s;
+}
+.btn-continue:disabled {
+  background-color: rgba(0, 0, 0, .12);
+  color: rgba(0, 0, 0, .26);
+  cursor: default;
+}
+.btn-continue:not(:disabled) {
+  background-color: #1976d2;
+  color: #fff;
+}
+.btn-continue:not(:disabled):hover { background-color: #1565c0; }
+.btn-cancel {
+  background-color: #1976d2;
+  color: #fff;
+}
+.btn-cancel:hover { background-color: #1565c0; }
+
+/* Responsive */
+@media (max-width: 993px) {
+  .login-container-float-center { width: 50%; left: 50%; }
+  .logo-login { height: 50px; }
+}
+@media (max-width: 680px) {
+  .login-container-float-center { width: 70%; }
+  .logo-login { height: 35px; }
+  .login-container { background-image: none; }
+}
+@media (max-width: 300px) {
+  .logo-login { height: 30px; }
+  .login-container { background-image: none; }
+}
