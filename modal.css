@@ -267,39 +267,98 @@ app-login-unico[hidden] {
   text-align: center;
   line-height: 1.3;
 }
-#authMethod .botones-metodos-container {
+#authMethod .auth-method-options {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: stretch;
-  gap: 12px;
+  flex-direction: column;
+  gap: 10px;
   width: 100%;
   max-width: 420px;
-  padding: 0;
   box-sizing: border-box;
 }
-#authMethod .boton-metodo {
-  flex: 1 1 auto;
-  width: 100%;
-  max-width: 100%;
+#authMethod .auth-method-card {
   display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1.5px solid #dcdcdc;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  transition: all .2s ease;
+  user-select: none;
 }
-#authMethod .boton-metodo button {
-  flex: 1 1 auto;
+#authMethod .auth-method-card:hover {
+  border-color: #0067b1;
+  background: #f7fafc;
+}
+#authMethod .auth-method-card.is-selected {
+  border-color: #0067b1;
+  background: #eef6fc;
+}
+#authMethod .auth-radio-input {
+  display: none;
+}
+#authMethod .auth-radio-custom {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid #8e8e8e;
+  position: relative;
+  flex-shrink: 0;
+  transition: all .2s ease;
+  box-sizing: border-box;
+}
+#authMethod .auth-method-card.is-selected .auth-radio-custom {
+  border-color: #0067b1;
+}
+#authMethod .auth-method-card.is-selected .auth-radio-custom::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #0067b1;
+}
+#authMethod .auth-method-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+}
+#authMethod .auth-method-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+#authMethod .auth-method-card-sub {
+  font-size: 11.5px;
+  color: #666;
+}
+#authMethod .auth-select-actions {
+  display: flex;
+  justify-content: center;
   width: 100%;
-  min-height: 40px;
-  height: 40px;
-  padding: 0 16px;
-  white-space: nowrap;
-  line-height: 40px;
+  margin-top: 18px;
+}
+#authMethod #acceptMethodBtn {
   background-color: #0067b1;
   color: #fff;
+  min-width: 140px;
+  height: 38px;
+  line-height: 38px;
+  padding: 0 24px;
   border: none;
   border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
   box-shadow: 0 3px 1px -2px rgba(0,0,0,.2), 0 2px 2px 0 rgba(0,0,0,.14), 0 1px 5px 0 rgba(0,0,0,.12);
   cursor: pointer;
-  font-size: 14px;
-  font-family: Roboto, "Helvetica Neue", sans-serif;
+  transition: background-color .2s ease;
+}
+#authMethod #acceptMethodBtn:hover {
+  background-color: #005694;
 }
 #authMethod .auth-method-name {
   font-weight: 500;
