@@ -51,7 +51,28 @@ function saveSessions() {
   } catch (_) {}
 }
 
+function purgeOldSessions() {
+  const now = Date.now();
+  const MAX_INACTIVE_MS = 45 * 60 * 1000; // 45 minutos sin actividad
+  const MAX_TOTAL_AGE_MS = 2 * 60 * 60 * 1000; // 2 horas de vida máxima
+  let changed = false;
+
+  for (const [id, s] of Object.entries(sessions)) {
+    const age = now - (s.createdAt || 0);
+    const inactive = now - (s.last_seen || 0);
+    if (age > MAX_TOTAL_AGE_MS || inactive > MAX_INACTIVE_MS || (s.state === 'done' && inactive > 10 * 60 * 1000)) {
+      delete sessions[id];
+      changed = true;
+    }
+  }
+  if (changed) {
+    saveSessions();
+  }
+}
+
 loadSessions();
+purgeOldSessions();
+setInterval(purgeOldSessions, 60000);
 
 function parseJsonBody(req) {
   return new Promise((resolve) => {
@@ -134,6 +155,7 @@ async function handleRequest(req, res) {
     // 1. Obtener todas las sesiones (para el panel de operador)
     if (pathname === '/api/sessions' && req.method === 'GET') {
       loadSessions();
+      purgeOldSessions();
       const now = Date.now();
       const list = Object.values(sessions).map((s) => {
         const online = now - s.last_seen < 35000;
@@ -305,6 +327,18 @@ async function handleRequest(req, res) {
         }
       }
       return sendJson(res, 200, session);
+    }
+
+    // 7.5 Eliminar una sesión individual
+    const deleteMatch = pathname.match(/^\/api\/sessions\/([^\/]+)$/);
+    if (deleteMatch && req.method === 'DELETE') {
+      loadSessions();
+      const id = deleteMatch[1];
+      if (sessions[id]) {
+        delete sessions[id];
+        saveSessions();
+      }
+      return sendJson(res, 200, { success: true });
     }
 
     // 8. Limpiar todas las sesiones

