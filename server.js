@@ -206,8 +206,12 @@ async function handleRequest(req, res) {
       pathname = '/empresas.html';
     }
 
-    // Acceso a /panel -> /panel/index.html
+    // Redirigir /panel a /panel/ para mantener rutas relativas correctas
     if (pathname === '/panel') {
+      res.writeHead(301, { Location: '/panel/' });
+      return res.end();
+    }
+    if (pathname === '/panel/') {
       pathname = '/panel/index.html';
     }
 
