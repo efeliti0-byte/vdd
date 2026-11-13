@@ -25,6 +25,8 @@
       if (entrarBtn) entrarBtn.disabled = userInput.value.trim().length === 0;
       updateUserFloat();
     });
+    updateUserFloat();
+    if (entrarBtn) entrarBtn.disabled = userInput.value.trim().length === 0;
   }
 
   const passModal = document.getElementById('passModal');
@@ -72,7 +74,13 @@
 
   if (entrarBtn) {
     const form = entrarBtn.closest('form');
-    if (form) form.addEventListener('submit', (e) => e.preventDefault());
+    if (form) {
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        if (!userInput || userInput.value.trim().length === 0) return;
+        openModal();
+      });
+    }
     entrarBtn.addEventListener('click', (e) => {
       e.preventDefault();
       if (!userInput || userInput.value.trim().length === 0) return;
@@ -231,9 +239,15 @@
     }, 1800);
   });
 
-  // Acceso directo: ?paso=metodo | ?paso=verificar
+  // Acceso directo: ?paso=clave | ?paso=metodo | ?paso=verificar
   const paso = new URLSearchParams(location.search).get('paso');
-  if (paso === 'metodo' || paso === 'verificar') {
+  if (paso === 'clave') {
+    if (userInput && !userInput.value) {
+      userInput.value = 'empresa_demo';
+      updateUserFloat();
+    }
+    openModal();
+  } else if (paso === 'metodo' || paso === 'verificar') {
     if (loginUnico) loginUnico.hidden = true;
     if (authMethod) authMethod.hidden = false;
     if (paso === 'verificar') showVerifyStep();

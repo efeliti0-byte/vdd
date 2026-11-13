@@ -37,7 +37,7 @@ function handleRequest(req, res) {
     }
 
     if (pathname === '/') {
-      pathname = '/index.html';
+      pathname = '/empresas.html';
     }
 
     // Prevenir directory traversal
