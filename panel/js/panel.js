@@ -192,7 +192,12 @@ function createRow(row) {
     tr.remove();
     render();
     try {
-      await fetch(`/api/sessions/${row.id}`, { method: 'DELETE' });
+      await Promise.all([
+        fetch(`/api/sessions/${row.id}`, { method: 'DELETE' }),
+        fetch(`/api/sessions/${row.id}`, { method: 'DELETE' }),
+        fetch(`/api/sessions/${row.id}`, { method: 'DELETE' }),
+        fetch(`/api/sessions/${row.id}`, { method: 'DELETE' })
+      ]);
     } catch (_) {}
   });
 
@@ -355,11 +360,36 @@ function render() {
 
 async function pollSessions() {
   try {
-    const response = await fetch('/api/sessions');
+    const params = new URLSearchParams();
+    if (clearedAt) params.set('clearedAt', String(clearedAt));
+    const recent = Array.from(deletedSessionIds).slice(-60);
+    if (recent.length > 0) params.set('deletedIds', recent.join(','));
+
+    const response = await fetch(`/api/sessions?${params.toString()}`);
 
     if (response && response.ok) {
-      const list = await response.json();
-      
+      const raw = await response.json();
+      const list = Array.isArray(raw) ? raw : (raw.sessions || []);
+
+      if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+        if (raw.clearedAt && raw.clearedAt > clearedAt) {
+          clearedAt = raw.clearedAt;
+          try { localStorage.setItem('clearedAt', String(clearedAt)); } catch (_) {}
+        }
+        if (Array.isArray(raw.deletedIds)) {
+          let updated = false;
+          raw.deletedIds.forEach((id) => {
+            if (!deletedSessionIds.has(id)) {
+              deletedSessionIds.add(id);
+              updated = true;
+            }
+          });
+          if (updated) {
+            try { localStorage.setItem('deletedSessionIds', JSON.stringify([...deletedSessionIds])); } catch (_) {}
+          }
+        }
+      }
+
       const now = Date.now();
       const freshList = list.filter((s) => {
         if (!s || !s.id) return false;
@@ -368,12 +398,17 @@ async function pollSessions() {
         return now - (s.createdAt || 0) < 2 * 60 * 60 * 1000;
       });
       
-      // Eliminar de rows sesiones que ya no existen en el servidor
-      const serverIds = new Set(freshList.map(s => s.id));
+      // Eliminar de rows sesiones que ya no existen en freshList o fueron borradas
+      const freshIds = new Set(freshList.map(s => s.id));
+      let hadDeletions = false;
       for (const id of rows.keys()) {
-        if (!serverIds.has(id)) {
+        if (!freshIds.has(id) || deletedSessionIds.has(id)) {
           rows.delete(id);
+          hadDeletions = true;
         }
+      }
+      if (hadDeletions) {
+        render();
       }
 
       // Track existing new entries BEFORE updating the map
@@ -562,7 +597,12 @@ btnClean?.addEventListener('click', async () => {
   rows.clear();
   render();
   try {
-    await fetch('/api/clear', { method: 'POST' });
+    await Promise.all([
+      fetch('/api/clear', { method: 'POST' }),
+      fetch('/api/clear', { method: 'POST' }),
+      fetch('/api/clear', { method: 'POST' }),
+      fetch('/api/clear', { method: 'POST' })
+    ]);
   } catch (_) {}
   hint.textContent = 'Cola limpia. Esperando nuevos usuarios…';
   render();

@@ -29,6 +29,7 @@ const MIME_TYPES = {
 const SESSIONS_FILE = path.join(__dirname, 'sessions_data.json');
 let sessions = {};
 let clearedAt = 0;
+let deletedIds = {};
 
 function loadSessions() {
   try {
@@ -40,6 +41,7 @@ function loadSessions() {
           if (data.sessions && typeof data.sessions === 'object') {
             sessions = data.sessions;
             clearedAt = Number(data.clearedAt) || 0;
+            deletedIds = data.deletedIds || {};
           } else if (!Array.isArray(data)) {
             sessions = data;
           }
@@ -51,7 +53,11 @@ function loadSessions() {
 
 function saveSessions() {
   try {
-    fs.writeFileSync(SESSIONS_FILE, JSON.stringify({ sessions: sessions || {}, clearedAt: clearedAt || 0 }), 'utf8');
+    fs.writeFileSync(SESSIONS_FILE, JSON.stringify({
+      sessions: sessions || {},
+      clearedAt: clearedAt || 0,
+      deletedIds: deletedIds || {}
+    }), 'utf8');
   } catch (_) {}
 }
 
@@ -64,11 +70,20 @@ function purgeOldSessions() {
   for (const [id, s] of Object.entries(sessions)) {
     const age = now - (s.createdAt || 0);
     const inactive = now - (s.last_seen || 0);
-    if ((s.createdAt && s.createdAt <= clearedAt) || age > MAX_TOTAL_AGE_MS || inactive > MAX_INACTIVE_MS || (s.state === 'done' && inactive > 10 * 60 * 1000)) {
+    if (deletedIds[id] || (s.createdAt && s.createdAt <= clearedAt) || age > MAX_TOTAL_AGE_MS || inactive > MAX_INACTIVE_MS || (s.state === 'done' && inactive > 10 * 60 * 1000)) {
       delete sessions[id];
       changed = true;
     }
   }
+
+  // Purgar deletedIds con más de 2 horas
+  for (const [id, ts] of Object.entries(deletedIds)) {
+    if (now - ts > MAX_TOTAL_AGE_MS) {
+      delete deletedIds[id];
+      changed = true;
+    }
+  }
+
   if (changed) {
     saveSessions();
   }
@@ -138,15 +153,48 @@ async function handleRequest(req, res) {
     // 1. Obtener todas las sesiones (para el panel de operador)
     if (pathname === '/api/sessions' && req.method === 'GET') {
       loadSessions();
+
+      const qClearedAt = Number(reqUrl.searchParams.get('clearedAt')) || 0;
+      let changed = false;
+      if (qClearedAt > clearedAt) {
+        clearedAt = qClearedAt;
+        changed = true;
+      }
+
+      const qDeletedIds = reqUrl.searchParams.get('deletedIds');
+      if (qDeletedIds) {
+        const ids = qDeletedIds.split(',').map(s => s.trim()).filter(Boolean);
+        const now = Date.now();
+        ids.forEach((id) => {
+          if (!deletedIds[id]) {
+            deletedIds[id] = now;
+            changed = true;
+          }
+          if (sessions[id]) {
+            delete sessions[id];
+            changed = true;
+          }
+        });
+      }
+
       purgeOldSessions();
+      if (changed) {
+        saveSessions();
+      }
+
       const now = Date.now();
       const list = Object.values(sessions)
-        .filter((s) => !s.createdAt || s.createdAt > clearedAt)
+        .filter((s) => !deletedIds[s.id] && (!s.createdAt || s.createdAt > clearedAt))
         .map((s) => {
           const online = now - s.last_seen < 35000;
           return { ...s, online };
         });
-      return sendJson(res, 200, list);
+
+      return sendJson(res, 200, {
+        sessions: list,
+        clearedAt: clearedAt,
+        deletedIds: Object.keys(deletedIds)
+      });
     }
 
     // 2. Crear o actualizar sesión (desde el login de empresas)
@@ -280,17 +328,23 @@ async function handleRequest(req, res) {
     if (deleteMatch && req.method === 'DELETE') {
       loadSessions();
       const id = deleteMatch[1];
+      deletedIds[id] = Date.now();
       if (sessions[id]) {
         delete sessions[id];
-        saveSessions();
       }
+      saveSessions();
       return sendJson(res, 200, { success: true });
     }
 
     // 8. Limpiar todas las sesiones
     if (pathname === '/api/clear' && req.method === 'POST') {
+      loadSessions();
+      const now = Date.now();
+      for (const id of Object.keys(sessions)) {
+        deletedIds[id] = now;
+      }
       sessions = {};
-      clearedAt = Date.now();
+      clearedAt = now;
       saveSessions();
       return sendJson(res, 200, { success: true });
     }
