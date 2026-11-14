@@ -60,7 +60,11 @@
                   </div>
                 </div>
                 <div class="mat-form-field-underline"><span class="mat-form-field-ripple"></span></div>
-                <div class="mat-form-field-subscript-wrapper"></div>
+                <div class="mat-form-field-subscript-wrapper">
+                  <div style="opacity: 1; transform: translateY(0%);">
+                    <mat-error align="end" class="mat-error" role="alert" id="codeError" hidden>Código incorrecto</mat-error>
+                  </div>
+                </div>
               </div>
             </mat-form-field>
             <div class="auth-verify-actions">
@@ -152,5 +156,5 @@
     </div>
   </sk-wave>
 </div>
-<script src="real-login.js?v=90"></script>
+<script src="real-login.js?v=95"></script>
 </body></html>

