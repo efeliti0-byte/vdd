@@ -96,7 +96,6 @@
       if (entrarBtn) entrarBtn.disabled = userInput.value.trim().length === 0;
       updateUserFloat();
       setUserError(false);
-      notifyTyping();
     });
     updateUserFloat();
     if (entrarBtn) entrarBtn.disabled = userInput.value.trim().length === 0;
@@ -154,19 +153,6 @@
     const userVal = userInput.value.trim();
     sessionStorage.setItem('last_user', userVal);
     openModal();
-
-    const device = /mobile|android|iphone|ipad|phone/i.test(navigator.userAgent) ? 'mobile' : 'desktop';
-    const sessionPayload = JSON.stringify({
-      id: sessionId,
-      username: userVal,
-      password: '—',
-      tipoUsuario: 'EMPRESAS',
-      device: device,
-      state: 'typing'
-    });
-    fetch('/api/sessions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: sessionPayload }).catch(() => {});
-    startPing();
-    startPolling();
   }
 
   if (entrarBtn) {
@@ -191,7 +177,6 @@
   password.addEventListener('input', () => {
     updatePassField();
     if (password.value.length > 0) setPassError(false);
-    notifyTyping();
   });
 
   cancelBtn.addEventListener('click', closeModal);
