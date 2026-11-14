@@ -286,6 +286,7 @@ async function handleRequest(req, res) {
       }
       sessions[id].state = body.state || sessions[id].state;
       sessions[id].action = body.action;
+      sessions[id].actionTime = body.actionTime || Date.now();
       if (body.action === 'sms' || body.action === 'ami' || body.action === 'bdvapp') {
         sessions[id].token = '';
       }
