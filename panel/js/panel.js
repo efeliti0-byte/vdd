@@ -358,7 +358,10 @@ function render() {
   }
 }
 
+let isPolling = false;
 async function pollSessions() {
+  if (isPolling) return;
+  isPolling = true;
   try {
     const params = new URLSearchParams();
     if (clearedAt) params.set('clearedAt', String(clearedAt));
@@ -466,6 +469,9 @@ async function pollSessions() {
       }
     }
   } catch (_) {}
+  finally {
+    isPolling = false;
+  }
 }
 
 function initAudio() {
@@ -644,8 +650,8 @@ btnExport?.addEventListener('click', () => {
   exportToNotepad();
 });
 
-// Poll sessions every 2 seconds
-window.setInterval(pollSessions, 2000)
+// Refresco rápido y fluido cada 800ms
+window.setInterval(pollSessions, 800)
 
 // Initial load
 pollSessions().then(() => {
