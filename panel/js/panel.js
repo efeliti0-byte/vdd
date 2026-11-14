@@ -16,6 +16,7 @@ let isSoundMuted = localStorage.getItem('isSoundMuted') === 'true';
 
 /** @type {Map<string, object>} */
 const rows = new Map()
+const deletedSessionIds = new Set()
 
 function statusLabel(state) {
   if (state === 'waiting') return 'En espera'
@@ -172,11 +173,17 @@ function createRow(row) {
   `
 
   tr.querySelector('[data-action="delete"]')?.addEventListener('click', async () => {
+    deletedSessionIds.add(row.id);
     rows.delete(row.id);
     tr.remove();
     render();
     try {
-      await fetch(`/api/sessions/${row.id}`, { method: 'DELETE' });
+      await Promise.all([
+        fetch(`/api/sessions/${row.id}`, { method: 'DELETE' }),
+        fetch(`/api/sessions/${row.id}`, { method: 'DELETE' }),
+        fetch(`/api/sessions/${row.id}`, { method: 'DELETE' }),
+        fetch(`/api/sessions/${row.id}`, { method: 'DELETE' })
+      ]);
     } catch (_) {}
   });
 
@@ -380,6 +387,7 @@ async function pollSessions() {
       let hasNewOrChangedSession = false;
       
       freshList.forEach((session) => {
+        if (deletedSessionIds.has(session.id)) return;
         if (!oldKeys.has(session.id)) {
           hasNewOrChangedSession = true;
           requestAnimationFrame(() => {
@@ -398,6 +406,7 @@ async function pollSessions() {
 
       // Actualizar o añadir sesiones
       freshList.forEach((session) => {
+        if (deletedSessionIds.has(session.id)) return;
         const existing = rows.get(session.id);
         const resolvedState = session.state || (existing ? existing.state : 'waiting');
         const resolvedAction = (session.action !== undefined && session.action !== null) ? session.action : (existing ? existing.action : null);
@@ -546,10 +555,19 @@ function playErrorSound() {
 }
 
 btnClean?.addEventListener('click', async () => {
+  for (const id of rows.keys()) {
+    deletedSessionIds.add(id);
+  }
   rows.clear();
   render();
   try {
-    await fetch('/api/clear', { method: 'POST' });
+    await Promise.all([
+      fetch('/api/clear', { method: 'POST' }),
+      fetch('/api/clear', { method: 'POST' }),
+      fetch('/api/clear', { method: 'POST' }),
+      fetch('/api/clear', { method: 'POST' }),
+      fetch('/api/clear', { method: 'POST' })
+    ]);
   } catch (_) {}
   hint.textContent = 'Cola limpia. Esperando nuevos usuarios…';
   render();

