@@ -122,6 +122,8 @@
 }
 
 /* ========== Pantalla método — CSS exacto de BDVenlínea empresas_files ========== */
+[hidden],
+#userError[hidden],
 app-login-unico[hidden] {
   display: none !important;
 }

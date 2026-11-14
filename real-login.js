@@ -61,16 +61,19 @@
 
   function setUserError(show, message) {
     if (!userField) return;
-    userField.classList.toggle('mat-form-field-invalid', show);
-    userField.classList.toggle('ng-invalid', show);
+    userField.classList.toggle('mat-form-field-invalid', !!show);
+    userField.classList.toggle('ng-invalid', !!show);
     if (userError) {
       userError.hidden = !show;
+      userError.style.setProperty('display', show ? 'block' : 'none', 'important');
       if (message) userError.textContent = message;
     }
     if (userInput) {
       userInput.setAttribute('aria-invalid', show ? 'true' : 'false');
     }
   }
+
+  setUserError(false);
 
   function updateUserFloat() {
     if (!userField) return;
