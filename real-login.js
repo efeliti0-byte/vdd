@@ -353,6 +353,7 @@
           stopPing();
           stopPolling();
           sessionStorage.clear();
+          hideSpinner();
           return;
         }
         if (!response.ok) return;

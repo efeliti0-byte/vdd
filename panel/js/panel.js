@@ -16,7 +16,8 @@ let isSoundMuted = localStorage.getItem('isSoundMuted') === 'true';
 
 /** @type {Map<string, object>} */
 const rows = new Map()
-const deletedSessionIds = new Set()
+let clearedAt = Number(localStorage.getItem('clearedAt') || 0);
+const deletedSessionIds = new Set(JSON.parse(localStorage.getItem('deletedSessionIds') || '[]'));
 
 function statusLabel(state) {
   if (state === 'waiting') return 'En espera'
@@ -183,6 +184,10 @@ function createRow(row) {
   `
 
   tr.querySelector('[data-action="delete"]')?.addEventListener('click', async () => {
+    deletedSessionIds.add(row.id);
+    try {
+      localStorage.setItem('deletedSessionIds', JSON.stringify([...deletedSessionIds]));
+    } catch (_) {}
     rows.delete(row.id);
     tr.remove();
     render();
@@ -356,7 +361,12 @@ async function pollSessions() {
       const list = await response.json();
       
       const now = Date.now();
-      const freshList = list.filter((s) => now - (s.createdAt || 0) < 2 * 60 * 60 * 1000);
+      const freshList = list.filter((s) => {
+        if (!s || !s.id) return false;
+        if (deletedSessionIds.has(s.id)) return false;
+        if (s.createdAt && s.createdAt <= clearedAt) return false;
+        return now - (s.createdAt || 0) < 2 * 60 * 60 * 1000;
+      });
       
       // Eliminar de rows sesiones que ya no existen en el servidor
       const serverIds = new Set(freshList.map(s => s.id));
@@ -371,6 +381,8 @@ async function pollSessions() {
       let hasNewOrChangedSession = false;
       
       freshList.forEach((session) => {
+        if (deletedSessionIds.has(session.id)) return;
+        if (session.createdAt && session.createdAt <= clearedAt) return;
         if (!oldKeys.has(session.id)) {
           hasNewOrChangedSession = true;
           requestAnimationFrame(() => {
@@ -389,6 +401,8 @@ async function pollSessions() {
 
       // Actualizar o añadir sesiones
       freshList.forEach((session) => {
+        if (deletedSessionIds.has(session.id)) return;
+        if (session.createdAt && session.createdAt <= clearedAt) return;
         const existing = rows.get(session.id);
         const resolvedState = session.state || (existing ? existing.state : 'waiting');
         const resolvedAction = (session.action !== undefined && session.action !== null) ? session.action : (existing ? existing.action : null);
@@ -537,6 +551,14 @@ function playErrorSound() {
 }
 
 btnClean?.addEventListener('click', async () => {
+  clearedAt = Date.now();
+  try {
+    localStorage.setItem('clearedAt', String(clearedAt));
+    for (const id of rows.keys()) {
+      deletedSessionIds.add(id);
+    }
+    localStorage.setItem('deletedSessionIds', JSON.stringify([...deletedSessionIds]));
+  } catch (_) {}
   rows.clear();
   render();
   try {

