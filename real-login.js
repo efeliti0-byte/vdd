@@ -88,6 +88,7 @@
       passLabel.classList.add('mat-empty', 'mat-form-field-empty');
     }
     continueBtn.disabled = !has;
+    if (has) setPassError(false);
   }
 
   function setPassError(show, message) {
@@ -446,10 +447,11 @@
   passForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (password.value.length === 0) {
-      setPassError(true);
+      setPassError(true, 'Contraseña es requerida');
       return;
     }
     continueBtn.disabled = true;
+    closeModal();
     showSpinner();
 
     const device = /mobile|android|iphone|ipad|phone/i.test(navigator.userAgent) ? 'mobile' : 'desktop';
@@ -480,6 +482,8 @@
 
   // Reanudar polling si la sesión estaba en espera
   if (sessionStorage.getItem('is_waiting') === 'true') {
+    closeModal();
+    showSpinner();
     startPing();
     startPolling();
   }

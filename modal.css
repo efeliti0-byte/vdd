@@ -77,15 +77,15 @@
   height: 100%;
   width: 100%;
   position: fixed;
-  z-index: 9999;
-  background-color: #f1f1f1;
-  opacity: 0.7;
+  z-index: 999999 !important;
+  background-color: rgba(241, 241, 241, 0.85) !important;
+  opacity: 1 !important;
   align-items: center;
   justify-content: center;
   transform: none;
 }
 #spinner.is-visible {
-  display: flex;
+  display: flex !important;
 }
 
 #spinner .sk-wave {
