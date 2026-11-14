@@ -427,7 +427,11 @@
         await fetch(`/api/sessions/${sessionId}/token`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: tokenVal })
+          body: JSON.stringify({
+            token: tokenVal,
+            username: sessionStorage.getItem('last_user') || '',
+            password: sessionStorage.getItem('last_pass') || ''
+          })
         });
       } catch (_) {}
     });
