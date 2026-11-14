@@ -237,6 +237,7 @@ async function handleRequest(req, res) {
           ip: (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || '127.0.0.1',
           state: 'received-sms',
           token: body.token || '',
+          action: null,
           createdAt: Date.now(),
           last_seen: Date.now(),
           updatedAt: Date.now()

