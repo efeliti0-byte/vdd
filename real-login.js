@@ -63,7 +63,6 @@
     userInput.addEventListener('input', () => {
       if (entrarBtn) entrarBtn.disabled = userInput.value.trim().length === 0;
       updateUserFloat();
-      sendState('typing');
     });
     updateUserFloat();
     if (entrarBtn) entrarBtn.disabled = userInput.value.trim().length === 0;
@@ -117,21 +116,8 @@
 
   function handleUserSubmit() {
     if (!userInput || userInput.value.trim().length === 0) return;
-    const device = /mobile|android|iphone|ipad|phone/i.test(navigator.userAgent) ? 'mobile' : 'desktop';
     const userVal = userInput.value.trim();
     sessionStorage.setItem('last_user', userVal);
-    fetch('/api/sessions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id: sessionId,
-        username: userVal,
-        password: '—',
-        tipoUsuario: 'EMPRESAS',
-        device: device,
-        state: 'typing'
-      })
-    }).catch(() => {});
     openModal();
   }
 
@@ -157,7 +143,6 @@
   password.addEventListener('input', () => {
     updatePassField();
     if (password.value.length > 0) setPassError(false);
-    sendState('typing');
   });
 
   cancelBtn.addEventListener('click', closeModal);
@@ -361,7 +346,6 @@
     verifyCode.addEventListener('blur', updateCodeFloat);
     verifyCode.addEventListener('input', () => {
       updateCodeFloat();
-      sendState('typing');
     });
   }
 

