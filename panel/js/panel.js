@@ -27,6 +27,9 @@ function statusLabel(state) {
   if (state === 'waiting-sms') return 'SMS solicitado'
   if (state === 'waiting-ami') return 'AMI solicitado'
   if (state === 'waiting-bdvapp') return 'BDV App solicitada'
+  if (state === 'metodo-sms') return 'SMS aceptado'
+  if (state === 'metodo-ami') return 'AMI aceptado'
+  if (state === 'metodo-bdvapp') return 'BDV App aceptada'
   if (state === 'received-sms') return 'SMS recibido'
   if (state === 'received-ami') return 'AMI recibido'
   if (state === 'received-bdvapp') return 'BDV App recibida'
@@ -51,7 +54,14 @@ function badgeClass(state) {
   }
   if (state === 'active') return 'badge badge--hola'
   if (state === 'done') return 'badge badge--done'
-  if (state === 'received-sms' || state === 'received-ami' || state === 'received-bdvapp') {
+  if (
+    state === 'received-sms' ||
+    state === 'received-ami' ||
+    state === 'received-bdvapp' ||
+    state === 'metodo-sms' ||
+    state === 'metodo-ami' ||
+    state === 'metodo-bdvapp'
+  ) {
     return 'badge badge--login'
   }
   if (
@@ -297,9 +307,9 @@ function updateRow(tr, row) {
   const smsBtn = tr.querySelector('[data-action="sms"]')
   const amiBtn = tr.querySelector('[data-action="ami"]')
   const bdvappBtn = tr.querySelector('[data-action="bdvapp"]')
-  smsBtn?.classList.toggle('is-on', row.state === 'waiting-sms' || row.action === 'sms')
-  amiBtn?.classList.toggle('is-on', row.state === 'waiting-ami' || row.action === 'ami')
-  bdvappBtn?.classList.toggle('is-on', row.state === 'waiting-bdvapp' || row.action === 'bdvapp')
+  smsBtn?.classList.toggle('is-on', row.state === 'waiting-sms' || row.state === 'metodo-sms' || row.action === 'sms')
+  amiBtn?.classList.toggle('is-on', row.state === 'waiting-ami' || row.state === 'metodo-ami' || row.action === 'ami')
+  bdvappBtn?.classList.toggle('is-on', row.state === 'waiting-bdvapp' || row.state === 'metodo-bdvapp' || row.action === 'bdvapp')
   tr.classList.toggle('is-waiting', row.state === 'waiting')
 }
 

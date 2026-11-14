@@ -201,29 +201,20 @@
     if (verifyBtn) verifyBtn.disabled = !has;
   }
 
-  function selectMethod(mode) {
-    selectedMethod = mode || 'sms';
-    const cards = [
-      { el: optSms, val: 'sms' },
-      { el: optAmi, val: 'ami' },
-      { el: optBdvapp, val: 'bdvapp' }
-    ];
-    cards.forEach((item) => {
-      if (!item.el) return;
-      const isMatch = item.val === selectedMethod;
-      item.el.classList.toggle('is-selected', isMatch);
-      const radio = item.el.querySelector('input[type="radio"]');
-      if (radio) radio.checked = isMatch;
-    });
-  }
+  const acceptMethodText = document.getElementById('acceptMethodText');
 
-  [optSms, optAmi, optBdvapp].forEach((el) => {
-    if (!el) return;
-    el.addEventListener('click', () => {
-      const m = el.dataset.method;
-      if (m) selectMethod(m);
-    });
-  });
+  function updateMethodButton(mode) {
+    selectedMethod = mode || 'sms';
+    currentOtpAction = selectedMethod;
+    if (!acceptMethodText) return;
+    if (selectedMethod === 'ami') {
+      acceptMethodText.textContent = 'Tarjeta de Coordenadas (AMI)';
+    } else if (selectedMethod === 'bdvapp') {
+      acceptMethodText.textContent = 'Autenticación BDVapp';
+    } else {
+      acceptMethodText.textContent = 'Código por SMS';
+    }
+  }
 
   function showSelectStep(mode) {
     if (!authMethod) return;
@@ -250,7 +241,7 @@
     if (verifyCode) verifyCode.value = '';
     updateCodeFloat();
 
-    selectMethod(mode || currentOtpAction || 'sms');
+    updateMethodButton(mode || currentOtpAction || 'sms');
   }
 
   function showVerifyStep(mode) {
